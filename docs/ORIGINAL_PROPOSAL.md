@@ -1,4 +1,4 @@
-# UAV Remote ID Spoofing: Graph-Theoretic Modeling and Cryptographic Defenses 
+# UAV Remote ID Spoofing: Graph-Theoretic Modeling and Cryptographic Defenses
 
 Sang Xing (solo)
 
@@ -11,13 +11,11 @@ This project investigates UAV swarm vulnerabilities to Remote ID spoofing attack
 - Python 3 - for simulation, graph analysis, cryptography, and anomaly detection.
 - Possible Libraries: networkx, numpy, scikit-learn, pycryptodome, matplotlib.
 
-
 ## Hardware + Software List
 
 - Laptop/PC for all simulations and analysis.
 - Optional: Raspberry Pi with RTL-SDR receiver (for simulated or controlled Remote ID traffic).
 - Software: Python packages listed above; GitHub code bases (Remote ID spoofers) for generating attack data in simulation.
-
 
 ## Project Timeline
 
@@ -57,22 +55,19 @@ This project investigates UAV swarm vulnerabilities to Remote ID spoofing attack
 - Prepare presentation slides and demo video.
 - Submit final report and present findings.
 
-
-# Expected Deliverables 
+# Expected Deliverables
 
 - Python-based UAV swarm and Remote ID spoofing simulator.
 - Graph-theoretic analysis and detection methods (spectral anomaly, Node2Vec embeddings).
 - Cryptographic signing prototype with performance benchmarks.
 - Final written report and demo with plots showing spoof detection accuracy and resilience.
 
-
 ## Risks / Open Questions
 
 - Limited access to physical hardware (RTL-SDR/UAV boards) may restrict real-world testing.
 - Crypto defenses may introduce latency/overhead in swarm messaging — scalability trade-offs need evaluation.
 
-
-# Possible Extensions 
+# Possible Extensions
 
 - Explore threshold/group signatures for swarm consensus.
 - Apply GNN-based graph anomaly detection to spoofed networks.
