@@ -1,6 +1,6 @@
 <div align="center">
    <a href="https://github.com/Sang-Buster/Argus">
-      <img src="https://raw.githubusercontent.com/Sang-Buster/Argus/refs/heads/main/assets/favicon.png" width=20% alt="logo">
+      <img src="https://raw.githubusercontent.com/Sang-Buster/Argus/refs/heads/main/assets/favicon.svg" width=20% alt="logo">
    </a>   
    <h1>Argus</h1>
    <h5>A UAV Remote ID Spoofing Defense System.</h5>
