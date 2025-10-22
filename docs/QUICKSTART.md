@@ -82,28 +82,28 @@ print(f"Perfect detection: {result.compute_metrics()}")
 # Expected: {'tpr': 1.0, 'fpr': 0.0, 'f1': 1.0}
 ```
 
-### 5. Run Automated Experiment (5 minutes)
+### 5. Run Interactive CLI (2 minutes)
 
 ```bash
-# Run from config file
-uv run python scripts/run_experiment.py --config configs/phantom_attack.yaml
+# Interactive mode with guided prompts
+argus
 
-# Results saved to results/phantom_attack/ with:
-# - metrics.json
+# Or quick command-line usage
+argus --attack phantom --detectors all --mode comparison
+
+# Results saved to results/ with:
+# - performance_comparison.png/pdf
 # - results_table.md
-# - figures/ (PNG + PDF plots)
 ```
 
-### 6. Parameter Sweep (10 minutes)
+### 6. Live Visualization (3 minutes)
 
 ```bash
-# Sweep phantom count
-uv run python scripts/sweep_parameters.py \
-    --config configs/phantom_attack.yaml \
-    --param phantom_count \
-    --values 1,3,5,10,15
+# Watch attacks and detection in real-time
+argus --attack phantom --detectors spectral crypto --mode live
 
-# Compare results across configurations
+# Both live viz + performance comparison
+argus --attack coordinated --detectors all --mode both
 ```
 
 ## Pre-Built Examples
@@ -134,28 +134,25 @@ uv run python examples/visualization_demo.py
 
 ### Change Swarm Parameters
 
-Edit `configs/baseline_swarm.yaml`:
+Use command-line arguments:
 
-```yaml
-swarm_size: 75 # More UAVs
-comm_range: 150.0 # Larger range
-simulation_duration: 300.0 # Longer simulation
+```bash
+# More UAVs and larger communication range
+argus --attack phantom --detectors all --mode comparison \
+    --num-uavs 75 --comm-range 150
 ```
 
-### Add New Attack Scenario
+### Test Different Attack Scenarios
 
-Create `configs/my_attack.yaml`:
+```bash
+# Phantom attack with 5 fake UAVs
+argus --attack phantom --detectors spectral centrality --mode live
 
-```yaml
-experiment_name: "my_custom_attack"
-attack_scenario:
-  attack_type: "phantom"
-  phantom_count: 10
-  start_time: 20.0
-  duration: 40.0
-detection_methods:
-  - "spectral"
-  - "crypto"
+# Position falsification attack
+argus --attack position --detectors crypto --mode comparison
+
+# Coordinated attack with multiple compromised UAVs
+argus --attack coordinated --detectors all --mode both
 ```
 
 ### Compare Detection Methods

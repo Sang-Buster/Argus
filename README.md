@@ -151,17 +151,17 @@ for t in range(20):
     print(f"TPR: {metrics['tpr']:.2%}, FPR: {metrics['fpr']:.2%}")
 ```
 
-### 3. Run Complete Experiment from Config
+### 3. Compare All Detection Methods
 
 ```bash
-# Run predefined experiment
-python scripts/run_experiment.py --config configs/phantom_attack.yaml
+# Run performance comparison with all detectors
+argus --attack phantom --detectors all --mode comparison
 
-# Run parameter sweep
-python scripts/sweep_parameters.py \
-    --config configs/baseline.yaml \
-    --param phantom_count \
-    --values 1,3,5,10,15
+# Live visualization with specific detectors
+argus --attack coordinated --detectors spectral crypto --mode live
+
+# Both live and comparison modes
+argus --attack position --detectors centrality --mode both
 ```
 
 ## Project Structure
@@ -183,41 +183,35 @@ tests/
 ├── contract/          # Interface compliance tests
 └── performance/       # Benchmark and profiling tests
 
-configs/               # YAML experiment configurations
-scripts/               # CLI tools for running experiments
+examples/              # Example demonstrations and scripts
 docs/                  # Documentation and examples
 results/               # Experiment outputs (gitignored)
 ```
 
-## Configuration
+## Usage Examples
 
-### Example Experiment Config
+### Command-Line Options
 
-`configs/my_experiment.yaml`:
+```bash
+# Interactive mode (recommended for beginners)
+argus
 
-```yaml
-experiment_name: "phantom_detection_experiment"
-random_seed: 42
-swarm_size: 50
-comm_range: 100.0
-simulation_duration: 180.0
-update_frequency: 1.0
+# Quick demos
+argus --attack phantom --detectors spectral --mode live
+argus --attack position --detectors all --mode comparison
+argus --attack coordinated --detectors crypto --mode both
 
-attack_scenario:
-  attack_type: "phantom"
-  start_time: 60.0
-  duration: 60.0
-  phantom_count: 5
+# Custom swarm configuration
+argus --attack phantom --detectors all --mode comparison \
+    --num-uavs 50 --comm-range 150
 
-enable_crypto: false
-
-detection_methods:
-  - "spectral"
-  - "centrality"
-  - "node2vec"
-
-output_dir: "results/my_experiment"
+# See all available options
+argus --help
 ```
+
+### Programmatic Usage
+
+For advanced experiments with custom configurations, you can use the Python API directly. See the `examples/` directory for comprehensive demonstrations.
 
 ## Documentation
 

@@ -87,10 +87,10 @@
 
 ### **Automation**
 
-- ✅ YAML-driven experiments
-- ✅ CLI tools (`run_experiment.py`, `sweep_parameters.py`)
-- ✅ Parameter sweeps
-- ✅ Batch processing
+- ✅ Interactive CLI (`argus` command)
+- ✅ Command-line arguments for quick testing
+- ✅ Live visualization mode
+- ✅ Performance comparison mode
 - ✅ Automatic results archiving
 
 ---
@@ -130,8 +130,7 @@
 - 28 Python modules in `argus/` package
 - 20 unit tests (all passing ✅)
 - 11 example demonstrations
-- 2 CLI automation scripts
-- 5 YAML experiment configurations
+- Interactive CLI tool (`argus` command)
 
 ### **Documentation** (9 guides)
 
@@ -193,6 +192,22 @@ Crypto defense restores baseline performance
 
 ## 🚀 **Quick Usage**
 
+### **Interactive CLI (Recommended)**
+
+```bash
+# Interactive mode with guided prompts
+argus
+
+# Quick command-line usage
+argus --attack phantom --detectors all --mode comparison
+argus --attack coordinated --detectors spectral crypto --mode live
+argus --attack position --detectors all --mode both
+
+# Custom swarm configuration
+argus --attack phantom --detectors all --mode comparison \
+    --num-uavs 50 --comm-range 150
+```
+
 ### **Run Demonstrations**
 
 ```bash
@@ -211,19 +226,6 @@ uv run python examples/scalability_test.py
 uv run python examples/live_visualization.py
 ```
 
-### **Run Experiments**
-
-```bash
-# Single experiment
-uv run python scripts/run_experiment.py --config configs/phantom_attack.yaml
-
-# Parameter sweep
-uv run python scripts/sweep_parameters.py \
-    --config configs/phantom_attack.yaml \
-    --param phantom_count \
-    --values 1,5,10,15,20
-```
-
 ---
 
 ## 📁 **Project Structure**
@@ -231,11 +233,9 @@ uv run python scripts/sweep_parameters.py \
 ```
 Argus/
 ├── README.md              # Main documentation
-├── argus/                 # Package (28 modules)
+├── src/argus_uav/         # Package (28 modules)
 ├── tests/                 # Tests (20 passing)
 ├── examples/              # 11 demonstrations
-├── scripts/               # 2 CLI tools
-├── configs/               # 5 YAML configs
 ├── docs/                  # 9 documentation files
 └── results/               # Experiment outputs
 ```
