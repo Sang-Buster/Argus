@@ -46,6 +46,7 @@ dev-dependencies = [
     "ruff>=0.11.0",
     "pre-commit>=4.0.0",
     "pytest>=8.0",
+    "pytest-cov>=6.0",
 ]
 
 [project.scripts]
@@ -62,4 +63,56 @@ build-backend = "hatchling.build"
 where = ["."]
 include = ["argus*"]
 exclude = ["tests*", "examples*", "results*", "htmlcov*"]
+
+[tool.pytest.ini_options]
+# Test discovery patterns
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+
+# Test directories
+testpaths = ["tests"]
+
+# Command-line options
+addopts = [
+    "--verbose",
+    "--strict-markers",
+    "--cov=argus_uav",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+]
+
+# Markers for categorizing tests
+markers = [
+    "unit: Unit tests for individual components",
+    "integration: Integration tests for end-to-end scenarios",
+    "contract: Contract tests for interface compliance",
+    "performance: Performance benchmarks and profiling",
+    "slow: Tests that take significant time to run",
+]
+
+# Logging
+log_cli = false
+log_cli_level = "INFO"
+log_file = "tests.log"
+log_file_level = "DEBUG"
+
+[tool.coverage.run]
+source = ["argus_uav"]
+omit = [
+    "*/tests/*",
+    "*/conftest.py",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstract",
+]
 
