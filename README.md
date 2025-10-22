@@ -303,7 +303,3 @@ MIT License - see [LICENSE](LICENSE) for details.
 **Sang Xing** (solo research project)
 
 For questions or collaboration: [xings@my.erau.edu](mailto:xings@my.erau.edu)
-
----
-
-🚁 **Argus**: Vigilant guardian against UAV Remote ID spoofing
