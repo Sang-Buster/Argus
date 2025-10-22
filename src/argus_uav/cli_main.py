@@ -778,7 +778,7 @@ def run_performance_comparison(
             "| Detector | TPR | FPR | Precision | Recall | F1 | Detection Time (ms) |\n"
         )
         f.write(
-            "|----------|-----|-----|-----------|--------|----|--------------------||\n"
+            "|----------|-----|-----|-----------|--------|----|--------------------|\n"
         )
         for detector_name in detector_names:
             m = results[detector_name]
