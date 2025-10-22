@@ -293,13 +293,3 @@ This is a research project. Contributions are welcome! Areas of interest:
 3. Grover, A., & Leskovec, J. (2016). "node2vec: Scalable Feature Learning"
 4. Liu, F. T., et al. (2008). "Isolation Forest"
 5. Bernstein, D. J., et al. (2012). "High-speed high-security signatures" (Ed25519)
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
-## Author
-
-**Sang Xing** (solo research project)
-
-For questions or collaboration: [xings@my.erau.edu](mailto:xings@my.erau.edu)
