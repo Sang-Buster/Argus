@@ -167,7 +167,7 @@ argus --attack position --detectors centrality --mode both
 ## Project Structure
 
 ```
-argus/
+src/argus_uav/
 ├── core/              # Simulation engine (UAV, swarm, Remote ID)
 ├── attacks/           # Attack injection (phantom, position spoof, coordinated)
 ├── detection/         # Detection algorithms (spectral, centrality, ML)
