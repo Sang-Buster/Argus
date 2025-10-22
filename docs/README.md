@@ -8,13 +8,20 @@
 
 ### **Getting Started**
 
-1. **[QUICKSTART.md](QUICKSTART.md)** - Get up and running in 10 minutes
+1. **[CLI.md](CLI.md)** - Main CLI tool guide (Recommended starting point!)
+
+   - Interactive and command-line modes
+   - All attacks and detection methods
+   - Live visualization and performance comparison
+   - Usage examples and best practices
+
+2. **[QUICKSTART.md](QUICKSTART.md)** - Get up and running in 10 minutes
 
    - Installation instructions
    - Quick examples
    - Common tasks
 
-2. **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Solutions to common issues
+3. **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Solutions to common issues
    - Visualization problems (Wayland, PyQt5)
    - Import errors
    - Performance issues
@@ -22,7 +29,7 @@
 
 ### **Technical Documentation**
 
-3. **[algorithm_details.md](algorithm_details.md)** - Deep dive into algorithms
+4. **[algorithm_details.md](algorithm_details.md)** - Deep dive into algorithms
 
    - Graph-theoretic detection (spectral, centrality)
    - Cryptographic defenses (Ed25519)
@@ -30,7 +37,7 @@
    - Consensus algorithms
    - Performance complexity analysis
 
-4. **[data_formats.md](data_formats.md)** - Data structures and formats
+5. **[data_formats.md](data_formats.md)** - Data structures and formats
 
    - Remote ID message format
    - Configuration files (YAML)
@@ -39,7 +46,7 @@
    - Visualization outputs
    - Type definitions
 
-5. **[references.md](references.md)** - Research papers and citations
+6. **[references.md](references.md)** - Research papers and citations
    - Graph theory papers
    - Cryptography standards
    - UAV Remote ID regulations
@@ -48,7 +55,7 @@
 
 ### **Project Documentation**
 
-6. **[STATUS.md](STATUS.md)** - Complete project status
+7. **[STATUS.md](STATUS.md)** - Complete project status
 
    - All features and completion summary
    - Performance benchmarks
@@ -56,7 +63,7 @@
    - Research contributions
    - Quick usage guide
 
-7. **[ORIGINAL_PROPOSAL.md](ORIGINAL_PROPOSAL.md)** - Original project proposal
+8. **[ORIGINAL_PROPOSAL.md](ORIGINAL_PROPOSAL.md)** - Original project proposal
    - Research description
    - Timeline
    - Expected deliverables
@@ -67,6 +74,9 @@
 ## 🎯 **Quick Navigation**
 
 ### **I want to...**
+
+**...use the CLI tool (recommended!)**  
+→ Read [CLI.md](CLI.md)
 
 **...get started quickly**  
 → Read [QUICKSTART.md](QUICKSTART.md)
@@ -96,6 +106,7 @@
 ```
 docs/
 ├── README.md                    # This file (documentation index)
+├── CLI.md                       # Main CLI tool guide
 ├── QUICKSTART.md                # Getting started guide
 ├── TROUBLESHOOTING.md           # Solutions to common problems
 ├── algorithm_details.md         # Technical algorithm documentation
@@ -113,7 +124,8 @@ docs/
 
 **Spec Kit Artifacts**: [../specs/001-uav-remote-id-defense/](../specs/001-uav-remote-id-defense/) - Design documents
 
-**Examples**: [../examples/](../examples/) - 11 runnable demonstrations
+**Examples**: [../examples/](../examples/) - Runnable demonstrations  
+**CLI Tool**: [../argus_cli.py](../argus_cli.py) - Main command-line interface
 
 **Tests**: [../tests/](../tests/) - Unit and integration tests
 
@@ -135,11 +147,11 @@ If you're contributing to Argus or extending it:
 
 If you're using Argus for research:
 
-1. Read [QUICKSTART.md](QUICKSTART.md) to get running quickly
-2. Check [algorithm_details.md](algorithm_details.md) for methodology
-3. Use [references.md](references.md) for citations
-4. Review [PROJECT_STATUS.md](PROJECT_STATUS.md) for capabilities
-5. Generate results using `scripts/run_experiment.py`
+1. Use [CLI.md](CLI.md) to run experiments and generate results
+2. Read [QUICKSTART.md](QUICKSTART.md) to get running quickly
+3. Check [algorithm_details.md](algorithm_details.md) for methodology
+4. Use [references.md](references.md) for citations
+5. Review [STATUS.md](STATUS.md) for capabilities
 
 ---
 
@@ -152,7 +164,7 @@ If you use this system in your research, please cite:
 ```bibtex
 @software{argus2025,
   author = {Xing, Sang},
-  title = {Argus: UAV Remote ID Spoofing Defense System},
+  title = {Argus: A UAV Remote ID Spoofing Defense System},
   subtitle = {Graph-Theoretic Modeling and Cryptographic Defenses},
   year = {2025},
   url = {https://github.com/[username]/Argus}
@@ -167,8 +179,9 @@ See [references.md](references.md) for a complete list of 19 research papers tha
 
 ## 📞 **Support**
 
+- **Using the CLI?** See [CLI.md](CLI.md)
 - **Questions?** Check [QUICKSTART.md](QUICKSTART.md) first
-- **Issues?** See troubleshooting in [QUICKSTART.md](QUICKSTART.md)
+- **Issues?** See [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 - **Research?** Review [algorithm_details.md](algorithm_details.md)
 - **Citations?** Check [references.md](references.md)
 

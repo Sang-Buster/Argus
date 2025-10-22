@@ -1,5 +1,5 @@
 """
-Argus: UAV Remote ID Spoofing Defense System
+Argus: A UAV Remote ID Spoofing Defense System
 
 A research framework for simulating UAV swarms, injecting spoofing attacks,
 and evaluating graph-theoretic and cryptographic defense mechanisms.
@@ -16,6 +16,11 @@ setup(
     long_description_content_type="text/markdown",
     packages=find_packages(),
     python_requires=">=3.10",
+    entry_points={
+        "console_scripts": [
+            "argus=argus.cli:main",
+        ],
+    },
     install_requires=[
         "annotated-types==0.7.0",
         "anyio==4.11.0",

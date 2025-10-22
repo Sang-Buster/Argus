@@ -64,6 +64,32 @@ pytest tests/ -v
 
 ## Quick Start
 
+### Interactive CLI (Recommended)
+
+The easiest way to get started is with the interactive CLI:
+
+```bash
+# After installation, use the 'argus' command
+argus
+
+# Or run the script directly
+python argus_cli.py
+# or
+uv run argus_cli.py
+
+# Quick command-line usage
+argus --attack phantom --detectors all --mode comparison
+```
+
+**See [CLI User Guide](docs/CLI.md) for complete documentation.**
+
+The CLI provides:
+
+- ✨ **Interactive mode** - guided experience for beginners
+- 🎬 **Live visualization** - watch attacks and detection in real-time
+- 📊 **Performance comparison** - automated benchmarking and plots
+- 🎯 **All attacks & detectors** - test any combination of 3 attacks × 4 detection methods
+
 ### 1. Simulate a Clean UAV Swarm
 
 ```python

@@ -22,7 +22,7 @@ from argus.evaluation.visualizations import Plotter
 def main():
     """Run complete demonstration of all Argus capabilities."""
     print("\n" + "=" * 80)
-    print("🚁 ARGUS: UAV REMOTE ID SPOOFING DEFENSE SYSTEM")
+    print("🚁 ARGUS: A UAV REMOTE ID SPOOFING DEFENSE SYSTEM")
     print("   Complete Demonstration of All Features")
     print("=" * 80)
 

@@ -213,7 +213,7 @@ If you use Argus in your research, please cite:
 ```
 @software{argus2025,
   author = {Xing, Sang},
-  title = {Argus: UAV Remote ID Spoofing Defense System},
+  title = {Argus: A UAV Remote ID Spoofing Defense System},
   year = {2025},
   url = {https://github.com/[username]/Argus}
 }

@@ -317,10 +317,10 @@ def main():
     from matplotlib.animation import FuncAnimation
 
     # IMPORTANT: Assign to variable to prevent garbage collection
-    anim = FuncAnimation(
+    _ = FuncAnimation(
         fig,
         update,
-        frames=50,
+        frames=120,
         interval=200,  # 200ms per frame
         blit=False,
         repeat=False,

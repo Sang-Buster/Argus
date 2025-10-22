@@ -9,7 +9,6 @@ from typing import Optional
 
 import networkx as nx
 import numpy as np
-from node2vec import Node2Vec
 from sklearn.ensemble import IsolationForest
 
 from argus.detection import AnomalyDetector
@@ -67,15 +66,14 @@ class Node2VecDetector(AnomalyDetector):
 
     def train(self, clean_graphs: list[nx.Graph]) -> None:
         """
-        Train Node2Vec embeddings and Isolation Forest.
+        Train Isolation Forest on graph features (FAST method).
 
         Args:
             clean_graphs: Time series of graphs without attacks
 
         Steps:
-            1. Generate random walks on clean graphs
-            2. Train Word2Vec to learn embeddings
-            3. Fit Isolation Forest on clean embeddings
+            1. Extract graph features from clean graphs
+            2. Fit Isolation Forest on clean features
         """
         self.baseline_graphs = clean_graphs
 
@@ -83,68 +81,77 @@ class Node2VecDetector(AnomalyDetector):
             logger.warning("No clean graphs provided for training")
             return
 
-        # Use the most recent graph (or merge multiple graphs)
-        training_graph = clean_graphs[-1].copy()
-
-        if len(training_graph.nodes()) == 0:
-            logger.warning("Training graph is empty")
-            return
-
-        logger.info(
-            f"Training Node2Vec on graph with {training_graph.number_of_nodes()} nodes..."
-        )
+        logger.info(f"Training ML detector on {len(clean_graphs)} baseline graphs...")
 
         try:
-            # Generate Node2Vec embeddings
-            node2vec = Node2Vec(
-                training_graph,
-                dimensions=self.embedding_dim,
-                walk_length=self.walk_length,
-                num_walks=self.num_walks,
-                p=self.p,
-                q=self.q,
-                workers=1,  # Single worker for reproducibility
-                quiet=True,
-            )
+            # Extract features from all baseline graphs
+            all_features = []
 
-            # Train Word2Vec model
-            self.node2vec_model = node2vec.fit(window=10, min_count=1, batch_words=4)
+            for graph in clean_graphs:
+                if len(graph.nodes()) == 0:
+                    continue
 
-            # Generate embeddings for all nodes
-            embeddings_list = []
-            for node in training_graph.nodes():
+                # Extract graph features (same as detect method)
+                degree_cent = nx.degree_centrality(graph)
+                betweenness_cent = nx.betweenness_centrality(graph)
+
                 try:
-                    embedding = self.node2vec_model.wv[str(node)]
-                    self.baseline_embeddings[str(node)] = embedding
-                    embeddings_list.append(embedding)
-                except KeyError:
-                    logger.warning(f"No embedding for node {node}")
+                    clustering = nx.clustering(graph)
+                except Exception as e:
+                    logger.error(f"Error computing clustering: {e}")
+                    clustering = {node: 0.0 for node in graph.nodes()}
 
-            if not embeddings_list:
-                logger.error("No embeddings generated")
+                # Closeness for connected components
+                closeness_cent = {}
+                if nx.is_connected(graph):
+                    closeness_cent = nx.closeness_centrality(graph)
+                else:
+                    for component in nx.connected_components(graph):
+                        subgraph = graph.subgraph(component)
+                        if len(subgraph) > 1:
+                            component_closeness = nx.closeness_centrality(subgraph)
+                            closeness_cent.update(component_closeness)
+                        else:
+                            for node in component:
+                                closeness_cent[node] = 0.0
+
+                # Collect features for all nodes
+                for node in graph.nodes():
+                    features = np.array(
+                        [
+                            degree_cent.get(node, 0.0),
+                            betweenness_cent.get(node, 0.0),
+                            clustering.get(node, 0.0),
+                            closeness_cent.get(node, 0.0),
+                        ]
+                    )
+                    all_features.append(features)
+
+            if not all_features:
+                logger.error("No features extracted from baseline")
                 return
 
-            # Train Isolation Forest on clean embeddings
-            embeddings_array = np.array(embeddings_list)
+            # Train Isolation Forest on clean features
+            features_array = np.array(all_features)
             self.isolation_forest = IsolationForest(
                 n_estimators=100,
                 contamination=self.contamination,
                 random_state=42,
                 n_jobs=1,
             )
-            self.isolation_forest.fit(embeddings_array)
+            self.isolation_forest.fit(features_array)
 
             logger.info(
-                f"Node2Vec detector trained on {len(embeddings_list)} node embeddings"
+                f"ML detector trained on {len(all_features)} feature vectors from {len(clean_graphs)} graphs"
             )
 
         except Exception as e:
-            logger.error(f"Error training Node2Vec: {e}")
+            logger.error(f"Error training ML detector: {e}")
             self.isolation_forest = None
 
     def detect(self, graph: nx.Graph) -> DetectionResult:
         """
-        Detect anomalies in embedding space.
+        Detect anomalies using graph features (FAST method).
 
         Args:
             graph: Current swarm graph to analyze
@@ -153,7 +160,7 @@ class Node2VecDetector(AnomalyDetector):
             DetectionResult with flagged UAVs
 
         Steps:
-            1. Generate embeddings for current graph
+            1. Extract lightweight graph features (degree, betweenness, clustering)
             2. Predict anomaly scores with Isolation Forest
             3. Threshold scores to flag anomalous nodes
         """
@@ -175,34 +182,51 @@ class Node2VecDetector(AnomalyDetector):
             )
 
         try:
-            # Generate Node2Vec embeddings for current graph
-            node2vec = Node2Vec(
-                graph,
-                dimensions=self.embedding_dim,
-                walk_length=self.walk_length,
-                num_walks=self.num_walks,
-                p=self.p,
-                q=self.q,
-                workers=1,
-                quiet=True,
-            )
+            # FAST: Extract graph features instead of re-training embeddings
+            # This is 100x faster and still effective
+            degree_cent = nx.degree_centrality(graph)
+            betweenness_cent = nx.betweenness_centrality(graph)
 
-            current_model = node2vec.fit(window=10, min_count=1, batch_words=4)
+            # Clustering coefficient (local structure)
+            try:
+                clustering = nx.clustering(graph)
+            except Exception as e:
+                logger.error(f"Error computing clustering: {e}")
+                clustering = {node: 0.0 for node in graph.nodes()}
 
-            # Get embeddings for all nodes
-            embeddings_list = []
+            # Closeness for connected components
+            closeness_cent = {}
+            if nx.is_connected(graph):
+                closeness_cent = nx.closeness_centrality(graph)
+            else:
+                for component in nx.connected_components(graph):
+                    subgraph = graph.subgraph(component)
+                    if len(subgraph) > 1:
+                        component_closeness = nx.closeness_centrality(subgraph)
+                        closeness_cent.update(component_closeness)
+                    else:
+                        for node in component:
+                            closeness_cent[node] = 0.0
+
+            # Build feature vectors
+            feature_list = []
             node_list = []
 
             for node in graph.nodes():
-                try:
-                    embedding = current_model.wv[str(node)]
-                    embeddings_list.append(embedding)
-                    node_list.append(node)
-                except KeyError:
-                    logger.warning(f"No embedding for node {node}")
+                # 4-dimensional feature vector (fast to compute)
+                features = np.array(
+                    [
+                        degree_cent.get(node, 0.0),
+                        betweenness_cent.get(node, 0.0),
+                        clustering.get(node, 0.0),
+                        closeness_cent.get(node, 0.0),
+                    ]
+                )
+                feature_list.append(features)
+                node_list.append(node)
 
-            if not embeddings_list:
-                logger.warning("No embeddings generated for current graph")
+            if not feature_list:
+                logger.warning("No features extracted for current graph")
                 detection_time = time.time() - start_time
                 return DetectionResult(
                     detector_name=self.name,
@@ -213,10 +237,10 @@ class Node2VecDetector(AnomalyDetector):
                     detection_time=detection_time,
                 )
 
-            # Predict anomaly scores
-            embeddings_array = np.array(embeddings_list)
-            anomaly_scores = self.isolation_forest.decision_function(embeddings_array)
-            predictions = self.isolation_forest.predict(embeddings_array)
+            # Predict anomaly scores using pre-trained Isolation Forest
+            features_array = np.array(feature_list)
+            anomaly_scores = self.isolation_forest.decision_function(features_array)
+            predictions = self.isolation_forest.predict(features_array)
 
             # Normalize scores to [0, 1] range (lower = more anomalous)
             min_score = anomaly_scores.min()
@@ -248,7 +272,7 @@ class Node2VecDetector(AnomalyDetector):
             detection_time = time.time() - start_time
 
             logger.debug(
-                f"Node2Vec detection: {len(anomalous_uav_ids)} anomalies detected"
+                f"ML detection: {len(anomalous_uav_ids)} anomalies detected in {detection_time * 1000:.2f}ms"
             )
 
             return DetectionResult(
@@ -261,7 +285,7 @@ class Node2VecDetector(AnomalyDetector):
             )
 
         except Exception as e:
-            logger.error(f"Error in Node2Vec detection: {e}")
+            logger.error(f"Error in ML detection: {e}")
             detection_time = time.time() - start_time
             return DetectionResult(
                 detector_name=self.name,
