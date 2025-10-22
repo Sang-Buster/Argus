@@ -7,11 +7,11 @@ Shows how graph-theoretic detection identifies phantom UAVs.
 
 import numpy as np
 
-from argus.attacks import AttackScenario, AttackType
-from argus.attacks.phantom_uav import PhantomInjector
-from argus.core.swarm import Swarm
-from argus.detection.centrality import CentralityDetector
-from argus.detection.spectral import SpectralDetector
+from argus_uav.attacks import AttackScenario, AttackType
+from argus_uav.attacks.phantom_uav import PhantomInjector
+from argus_uav.core.swarm import Swarm
+from argus_uav.detection.centrality import CentralityDetector
+from argus_uav.detection.spectral import SpectralDetector
 
 
 def main():

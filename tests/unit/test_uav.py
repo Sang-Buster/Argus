@@ -8,7 +8,7 @@ import time
 
 import pytest
 
-from argus.core.uav import UAV
+from argus_uav.core.uav import UAV
 
 
 @pytest.mark.unit

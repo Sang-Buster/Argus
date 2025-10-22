@@ -9,10 +9,10 @@ import time
 
 import numpy as np
 
-from argus.attacks import AttackScenario, AttackType
-from argus.attacks.phantom_uav import PhantomInjector
-from argus.core.swarm import Swarm
-from argus.detection.crypto_detector import CryptoDetector
+from argus_uav.attacks import AttackScenario, AttackType
+from argus_uav.attacks.phantom_uav import PhantomInjector
+from argus_uav.core.swarm import Swarm
+from argus_uav.detection.crypto_detector import CryptoDetector
 
 
 def main():
@@ -126,7 +126,7 @@ def main():
     # Measure signing performance
     test_uav = list(swarm.uavs.values())[0]
     if test_uav.private_key:
-        from argus.crypto.ed25519_signer import Ed25519Signer
+        from argus_uav.crypto.ed25519_signer import Ed25519Signer
 
         test_message = test_uav.broadcast_remote_id(time.time())
 

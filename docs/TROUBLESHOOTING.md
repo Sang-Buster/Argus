@@ -82,7 +82,7 @@ uv pip install -e .
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from argus.core.swarm import Swarm
+    from argus_uav.core.swarm import Swarm
 ```
 
 ---

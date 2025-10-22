@@ -12,9 +12,9 @@ from pathlib import Path
 
 import yaml
 
-from argus.attacks import AttackScenario, AttackType
-from argus.experiments.config_schema import ExperimentConfig
-from argus.experiments.runner import ExperimentRunner
+from argus_uav.attacks import AttackScenario, AttackType
+from argus_uav.experiments.config_schema import ExperimentConfig
+from argus_uav.experiments.runner import ExperimentRunner
 
 
 def load_config(config_path: Path) -> ExperimentConfig:

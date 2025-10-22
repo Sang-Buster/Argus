@@ -7,7 +7,7 @@ Uses smaller area and larger comm range for a well-connected swarm.
 
 import numpy as np
 
-from argus.core.swarm import Swarm
+from argus_uav.core.swarm import Swarm
 
 
 def main():

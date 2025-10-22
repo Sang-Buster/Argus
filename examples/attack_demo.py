@@ -7,11 +7,11 @@ Shows phantom UAV injection, position falsification, and coordinated attacks.
 
 import numpy as np
 
-from argus.attacks import AttackScenario, AttackType
-from argus.attacks.coordinated import CoordinatedInjector
-from argus.attacks.phantom_uav import PhantomInjector
-from argus.attacks.position_spoof import PositionFalsifier
-from argus.core.swarm import Swarm
+from argus_uav.attacks import AttackScenario, AttackType
+from argus_uav.attacks.coordinated import CoordinatedInjector
+from argus_uav.attacks.phantom_uav import PhantomInjector
+from argus_uav.attacks.position_spoof import PositionFalsifier
+from argus_uav.core.swarm import Swarm
 
 
 def demo_phantom_attack():

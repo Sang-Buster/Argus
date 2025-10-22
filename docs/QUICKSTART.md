@@ -20,7 +20,7 @@ uv run python -c "import argus; print('✓ Argus installed')"
 ### 1. Simulate a UAV Swarm (30 seconds)
 
 ```python
-from argus.core.swarm import Swarm
+from argus_uav.core.swarm import Swarm
 import numpy as np
 
 rng = np.random.default_rng(seed=42)
@@ -34,8 +34,8 @@ for t in range(10):
 ### 2. Inject Phantom Attack (1 minute)
 
 ```python
-from argus.attacks import AttackScenario, AttackType
-from argus.attacks.phantom_uav import PhantomInjector
+from argus_uav.attacks import AttackScenario, AttackType
+from argus_uav.attacks.phantom_uav import PhantomInjector
 
 attack = AttackScenario(AttackType.PHANTOM, 5.0, 10.0, phantom_count=5)
 injector = PhantomInjector()
@@ -47,7 +47,7 @@ print(f"Phantoms added! Total: {len(swarm.uavs)} UAVs")
 ### 3. Detect with Graph Methods (2 minutes)
 
 ```python
-from argus.detection.spectral import SpectralDetector
+from argus_uav.detection.spectral import SpectralDetector
 
 # Train on baseline
 detector = SpectralDetector(threshold=1.0)
@@ -64,7 +64,7 @@ print(f"TPR: {metrics['tpr']:.2%}, FPR: {metrics['fpr']:.2%}, F1: {metrics['f1']
 ### 4. Perfect Detection with Crypto (3 minutes)
 
 ```python
-from argus.detection.crypto_detector import CryptoDetector
+from argus_uav.detection.crypto_detector import CryptoDetector
 
 # Create crypto-enabled swarm
 crypto_swarm = Swarm(30, 200.0, (500, 500, 100), rng, enable_crypto=True)

@@ -8,7 +8,7 @@ import time
 
 import pytest
 
-from argus.crypto.ed25519_signer import Ed25519Signer
+from argus_uav.crypto.ed25519_signer import Ed25519Signer
 
 
 @pytest.mark.unit

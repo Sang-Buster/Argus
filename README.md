@@ -3,13 +3,15 @@
       <img src="https://raw.githubusercontent.com/Sang-Buster/Argus/refs/heads/main/assets/favicon.svg" width=20% alt="logo">
    </a>   
    <h1>Argus</h1>
-   <h5>A UAV Remote ID Spoofing Defense System.</h5>
+   <a href="https://deepwiki.com/Sang-Buster/Argus"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+   <a href="https://pypi.org/project/argus_uav/"><img src="https://img.shields.io/pypi/v/argus_uav" alt="PyPI"></a>
+   <a href="https://github.com/Sang-Buster/Argus/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Sang-Buster/Argus" alt="License"></a>
+   <a href="https://github.com/astral-sh/uv"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json" alt="uv"></a>
+   <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff"></a>
+   <a href="https://github.com/Sang-Buster/Force-Fusion/commits/main"><img src="https://img.shields.io/github/last-commit/Sang-Buster/Argus" alt="Last Commit"></a>
+   <h6 align="center"><small>A UAV Remote ID Spoofing Defense System.</small></h6>
+   <p><b>#UAV Swarm Security &emsp; #Remote ID Spoofing &emsp; #Graph-Theoretic Modeling &emsp; #Cryptographic Defenses</b></p>
 </div>
-
-**Graph-Theoretic Modeling and Cryptographic Defenses Against Remote ID Spoofing Attacks**
-
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Overview
 
@@ -41,24 +43,32 @@ Argus is a research framework for investigating UAV swarm vulnerabilities to Rem
 - Python 3.10 or higher
 - pip or uv package manager
 
-### Quick Install
+### From PyPI (Recommended)
+
+```bash
+# Install from PyPI
+pip install argus_uav
+
+# Verify installation
+argus --help
+```
+
+### From Source (For Development)
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/Sang-Buster/Argus.git
 cd Argus
 
 # Create virtual environment
-python3 -m venv venv
+uv v -p 3.10
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Install Argus in development mode
+# Install in development mode
 pip install -e .
 
 # Verify installation
+argus --help
 pytest tests/ -v
 ```
 
@@ -91,7 +101,7 @@ The CLI provides:
 ### 1. Simulate a Clean UAV Swarm
 
 ```python
-from argus.core.swarm import Swarm
+from argus_uav.core.swarm import Swarm
 import numpy as np
 
 # Create reproducible simulation
@@ -112,9 +122,9 @@ for t in range(10):
 ### 2. Inject and Detect Phantom UAVs
 
 ```python
-from argus.attacks.phantom_uav import PhantomInjector
-from argus.attacks import AttackScenario, AttackType
-from argus.detection.spectral import SpectralDetector
+from argus_uav.attacks.phantom_uav import PhantomInjector
+from argus_uav.attacks import AttackScenario, AttackType
+from argus_uav.detection.spectral import SpectralDetector
 
 # Configure phantom attack
 attack = AttackScenario(

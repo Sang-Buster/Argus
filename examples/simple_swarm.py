@@ -7,7 +7,7 @@ This is the MVP - a working swarm simulator without attacks or detection.
 
 import numpy as np
 
-from argus.core.swarm import Swarm
+from argus_uav.core.swarm import Swarm
 
 
 def main():

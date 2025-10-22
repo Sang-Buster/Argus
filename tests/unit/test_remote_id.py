@@ -8,7 +8,7 @@ import time
 
 import pytest
 
-from argus.core.remote_id import RemoteIDMessage
+from argus_uav.core.remote_id import RemoteIDMessage
 
 
 @pytest.mark.unit

@@ -13,10 +13,10 @@ matplotlib.use("Qt5Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from argus.attacks import AttackScenario, AttackType
-from argus.attacks.phantom_uav import PhantomInjector
-from argus.consensus.average_consensus import AverageConsensus
-from argus.core.swarm import Swarm
+from argus_uav.attacks import AttackScenario, AttackType
+from argus_uav.attacks.phantom_uav import PhantomInjector
+from argus_uav.consensus.average_consensus import AverageConsensus
+from argus_uav.core.swarm import Swarm
 
 
 def main():
