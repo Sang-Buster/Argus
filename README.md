@@ -72,13 +72,11 @@ The easiest way to get started is with the interactive CLI:
 # After installation, use the 'argus' command
 argus
 
-# Or run the script directly
-python argus_cli.py
-# or
-uv run argus_cli.py
-
 # Quick command-line usage
 argus --attack phantom --detectors all --mode comparison
+
+# See all options
+argus --help
 ```
 
 **See [CLI User Guide](docs/CLI.md) for complete documentation.**
