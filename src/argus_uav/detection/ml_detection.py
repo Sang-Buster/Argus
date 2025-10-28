@@ -38,6 +38,7 @@ class Node2VecDetector(AnomalyDetector):
         p: float = 1.0,
         q: float = 1.0,
         contamination: float = 0.1,
+        score_threshold: float = 0.6,
     ):
         """
         Initialize Node2Vec detector.
@@ -50,6 +51,7 @@ class Node2VecDetector(AnomalyDetector):
             p: Return parameter (controls walk strategy)
             q: In-out parameter (controls walk strategy)
             contamination: Expected fraction of anomalies in data
+            score_threshold: Threshold for flagging anomalies (0-1, higher = stricter)
         """
         super().__init__(name)
         self.embedding_dim = embedding_dim
@@ -58,6 +60,7 @@ class Node2VecDetector(AnomalyDetector):
         self.p = p
         self.q = q
         self.contamination = contamination
+        self.score_threshold = score_threshold  # NEW: configurable threshold
 
         # ML model
         self.isolation_forest: Optional[IsolationForest] = None
@@ -240,14 +243,13 @@ class Node2VecDetector(AnomalyDetector):
             # Predict anomaly scores using pre-trained Isolation Forest
             features_array = np.array(feature_list)
             anomaly_scores = self.isolation_forest.decision_function(features_array)
-            predictions = self.isolation_forest.predict(features_array)
 
-            # Normalize scores to [0, 1] range (lower = more anomalous)
+            # Normalize scores to [0, 1] range (lower score = more anomalous)
             min_score = anomaly_scores.min()
             max_score = anomaly_scores.max()
             score_range = max_score - min_score
 
-            for node, score, pred in zip(node_list, anomaly_scores, predictions):
+            for node, score in zip(node_list, anomaly_scores):
                 # Convert to confidence score (higher = more anomalous)
                 if score_range > 0:
                     normalized_score = 1.0 - (score - min_score) / score_range
@@ -256,8 +258,9 @@ class Node2VecDetector(AnomalyDetector):
 
                 confidence_scores[node] = float(normalized_score)
 
-                # Flag if predicted as anomaly (-1)
-                if pred == -1:
+                # Flag if score exceeds threshold (calibrated threshold)
+                # This replaces the binary predict() which was too aggressive
+                if normalized_score >= self.score_threshold:
                     anomalous_uav_ids.add(node)
 
             # Get ground truth

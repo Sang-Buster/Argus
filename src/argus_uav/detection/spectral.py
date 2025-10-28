@@ -24,28 +24,39 @@ class SpectralDetector(AnomalyDetector):
     - Algebraic connectivity (second smallest eigenvalue λ₂)
     - Spectral gap (λₙ - λ₂)
     - Overall eigenvalue distribution shifts
+    - Eigenvector residuals (subspace-based detection)
+    - Position-based topology validation
 
     Phantom UAVs and position spoofing create topological anomalies
-    that manifest as eigenvalue deviations.
+    that manifest as eigenvalue deviations and eigenvector perturbations.
     """
 
-    def __init__(self, name: str = "spectral", threshold: float = 2.5):
+    def __init__(
+        self,
+        name: str = "spectral",
+        threshold: float = 2.5,
+        use_eigenvector_residuals: bool = True,
+    ):
         """
         Initialize spectral detector.
 
         Args:
             name: Detector identifier
             threshold: Standard deviations for anomaly threshold
+            use_eigenvector_residuals: Enable subspace-based detection
         """
         super().__init__(name)
         self.threshold = threshold
+        self.use_eigenvector_residuals = use_eigenvector_residuals
 
         # Baseline statistics
         self.baseline_eigenvalues: list[np.ndarray] = []
+        self.baseline_eigenvectors: list[np.ndarray] = []
         self.mean_eigenvalues: np.ndarray = None
         self.std_eigenvalues: np.ndarray = None
         self.mean_algebraic_connectivity: float = 0.0
         self.std_algebraic_connectivity: float = 0.0
+        self.baseline_subspace: np.ndarray = None  # For eigenvector residuals
 
     def train(self, clean_graphs: list[nx.Graph]) -> None:
         """
@@ -66,8 +77,10 @@ class SpectralDetector(AnomalyDetector):
         # Compute eigenvalues for all baseline graphs
         for graph in clean_graphs:
             if len(graph.nodes()) > 0:
-                eigenvalues = self._compute_eigenvalues(graph)
+                eigenvalues, eigenvectors = self._compute_spectrum(graph)
                 self.baseline_eigenvalues.append(eigenvalues)
+                if self.use_eigenvector_residuals and eigenvectors is not None:
+                    self.baseline_eigenvectors.append(eigenvectors)
 
         if not self.baseline_eigenvalues:
             logger.warning("Could not compute eigenvalues for training")
@@ -96,6 +109,14 @@ class SpectralDetector(AnomalyDetector):
         self.mean_algebraic_connectivity = np.mean(algebraic_connectivities)
         self.std_algebraic_connectivity = np.std(algebraic_connectivities)
 
+        # Compute baseline subspace (average eigenvector subspace)
+        if self.use_eigenvector_residuals and self.baseline_eigenvectors:
+            # Use first k eigenvectors for subspace
+            k = min(5, min(len(ev) for ev in self.baseline_eigenvectors if len(ev) > 0))
+            if k > 0:
+                # Average the subspace (simplified: just use the most recent baseline)
+                self.baseline_subspace = self.baseline_eigenvectors[-1][:, :k]
+
         logger.info(f"Spectral detector trained on {len(clean_graphs)} graphs")
         logger.debug(
             f"  Mean algebraic connectivity: {self.mean_algebraic_connectivity:.4f}"
@@ -103,6 +124,10 @@ class SpectralDetector(AnomalyDetector):
         logger.debug(
             f"  Std algebraic connectivity: {self.std_algebraic_connectivity:.4f}"
         )
+        if self.use_eigenvector_residuals and self.baseline_subspace is not None:
+            logger.debug(
+                f"  Baseline subspace dimension: {self.baseline_subspace.shape}"
+            )
 
     def detect(self, graph: nx.Graph) -> DetectionResult:
         """
@@ -116,8 +141,8 @@ class SpectralDetector(AnomalyDetector):
         """
         start_time = time.time()
 
-        # Compute current eigenvalues
-        current_eigenvalues = self._compute_eigenvalues(graph)
+        # Compute current spectrum (eigenvalues and eigenvectors)
+        current_eigenvalues, current_eigenvectors = self._compute_spectrum(graph)
 
         # Compute anomaly scores for each node
         confidence_scores = {}
@@ -143,20 +168,50 @@ class SpectralDetector(AnomalyDetector):
             self.std_algebraic_connectivity + 1e-10
         )
 
-        # Compute per-node scores based on degree centrality deviation
-        # (Approximation: nodes contributing to eigenvalue shifts often have unusual degree)
-        degrees = dict(graph.degree())
+        # Compute eigenvector residuals if enabled
+        eigenvector_residuals = {}
+        if (
+            self.use_eigenvector_residuals
+            and self.baseline_subspace is not None
+            and current_eigenvectors is not None
+        ):
+            eigenvector_residuals = self._compute_eigenvector_residuals(
+                graph, current_eigenvectors
+            )
 
+        # Compute per-node scores based on multiple factors
+        degrees = dict(graph.degree())
         mean_degree = np.mean(list(degrees.values())) if degrees else 0
         std_degree = np.std(list(degrees.values())) if degrees else 1
+
+        # Get positions for topology validation
+        positions = {}
+        for node in graph.nodes():
+            node_data = graph.nodes[node]
+            if "uav" in node_data:
+                positions[node] = node_data["uav"].position
 
         for node in graph.nodes():
             # Z-score based on degree deviation
             degree = degrees.get(node, 0)
             degree_z_score = abs(degree - mean_degree) / (std_degree + 1e-10)
 
-            # Combine with global spectral anomaly
-            combined_score = 0.5 * degree_z_score + 0.5 * ac_z_score
+            # Eigenvector residual score
+            ev_residual_score = eigenvector_residuals.get(node, 0.0)
+
+            # Position-based topology score
+            position_score = self._compute_position_anomaly_score(
+                node, positions, graph
+            )
+
+            # Combine scores with weights
+            combined_score = (
+                0.3 * degree_z_score  # Degree centrality
+                + 0.3 * ac_z_score  # Global connectivity
+                + 0.25 * ev_residual_score  # Eigenvector residual
+                + 0.15 * position_score  # Position anomaly
+            )
+
             confidence_scores[node] = float(combined_score)
 
             # Flag if above threshold
@@ -199,21 +254,147 @@ class SpectralDetector(AnomalyDetector):
         Returns:
             Sorted eigenvalues (ascending order)
         """
+        eigenvalues, _ = self._compute_spectrum(graph)
+        return eigenvalues
+
+    def _compute_spectrum(
+        self, graph: nx.Graph
+    ) -> tuple[np.ndarray, np.ndarray | None]:
+        """
+        Compute eigenvalues and eigenvectors of graph Laplacian.
+
+        Args:
+            graph: NetworkX graph
+
+        Returns:
+            Tuple of (eigenvalues, eigenvectors) or (eigenvalues, None)
+        """
         if len(graph.nodes()) == 0:
-            return np.array([])
+            return np.array([]), None
 
         try:
             # Compute Laplacian matrix
             laplacian = nx.laplacian_matrix(graph).toarray()
 
-            # Compute eigenvalues (use eigvalsh for symmetric matrices)
-            eigenvalues = np.linalg.eigvalsh(laplacian)
-
-            # Sort ascending
-            eigenvalues = np.sort(eigenvalues)
-
-            return eigenvalues
+            # Compute full eigendecomposition if needed
+            if self.use_eigenvector_residuals:
+                eigenvalues, eigenvectors = np.linalg.eigh(laplacian)
+                # Sort ascending
+                sort_idx = np.argsort(eigenvalues)
+                eigenvalues = eigenvalues[sort_idx]
+                eigenvectors = eigenvectors[:, sort_idx]
+                return eigenvalues, eigenvectors
+            else:
+                # Just eigenvalues
+                eigenvalues = np.linalg.eigvalsh(laplacian)
+                eigenvalues = np.sort(eigenvalues)
+                return eigenvalues, None
 
         except Exception as e:
-            logger.error(f"Error computing eigenvalues: {e}")
-            return np.array([])
+            logger.error(f"Error computing spectrum: {e}")
+            return np.array([]), None
+
+    def _compute_eigenvector_residuals(
+        self, graph: nx.Graph, current_eigenvectors: np.ndarray
+    ) -> dict[str, float]:
+        """
+        Compute eigenvector residuals for anomaly detection.
+
+        Measures how well each node fits the baseline subspace.
+
+        Args:
+            graph: Current graph
+            current_eigenvectors: Current eigenvector matrix
+
+        Returns:
+            Mapping of node ID to residual score
+        """
+        residuals = {}
+
+        if self.baseline_subspace is None or current_eigenvectors is None:
+            return {node: 0.0 for node in graph.nodes()}
+
+        try:
+            # Get dimensions
+            n_nodes = len(graph.nodes())
+            k = min(self.baseline_subspace.shape[1], current_eigenvectors.shape[1])
+
+            if k == 0 or n_nodes != current_eigenvectors.shape[0]:
+                return {node: 0.0 for node in graph.nodes()}
+
+            # Extract first k eigenvectors
+            current_subspace = current_eigenvectors[:, :k]
+
+            # Compute subspace projection residuals for each node
+            node_list = list(graph.nodes())
+
+            for i, node in enumerate(node_list):
+                # Get node's eigenvector entries
+                node_vec = current_subspace[i, :]
+
+                # Project onto baseline subspace
+                if self.baseline_subspace.shape[0] > i:
+                    baseline_vec = self.baseline_subspace[i, :]
+                    # Compute residual (difference)
+                    residual = np.linalg.norm(node_vec - baseline_vec)
+                    residuals[node] = float(residual)
+                else:
+                    # Node not in baseline (phantom UAV)
+                    residuals[node] = 10.0  # High anomaly score
+
+        except Exception as e:
+            logger.debug(f"Error computing eigenvector residuals: {e}")
+            return {node: 0.0 for node in graph.nodes()}
+
+        return residuals
+
+    def _compute_position_anomaly_score(
+        self, node: str, positions: dict[str, tuple], graph: nx.Graph
+    ) -> float:
+        """
+        Compute position-based anomaly score.
+
+        Detects position spoofing by checking if reported position
+        is consistent with graph topology.
+
+        Args:
+            node: Node ID
+            positions: Mapping of node ID to position
+            graph: Current graph
+
+        Returns:
+            Anomaly score (higher = more suspicious)
+        """
+        if node not in positions:
+            return 0.0
+
+        node_pos = np.array(positions[node])
+        neighbors = list(graph.neighbors(node))
+
+        if not neighbors:
+            # Isolated node is suspicious
+            return 2.0
+
+        # Check distance consistency
+        inconsistencies = 0
+        total_checks = 0
+
+        for neighbor in neighbors:
+            if neighbor not in positions:
+                continue
+
+            neighbor_pos = np.array(positions[neighbor])
+            distance = np.linalg.norm(node_pos - neighbor_pos)
+
+            # If connected but very far apart, that's suspicious
+            # (Assumes communication range constraint)
+            if distance > 150.0:  # Typical UAV communication range in meters
+                inconsistencies += 1
+
+            total_checks += 1
+
+        if total_checks == 0:
+            return 0.0
+
+        # Return fraction of inconsistent connections
+        return float(inconsistencies / total_checks) * 3.0  # Scale up

@@ -53,4 +53,10 @@ class AnomalyDetector(ABC):
         pass
 
 
-__all__ = ["AnomalyDetector"]
+__all__ = ["AnomalyDetector", "TemporalCorrelationDetector"]
+
+# Import concrete detectors for convenience
+try:
+    from argus_uav.detection.temporal_correlation import TemporalCorrelationDetector
+except ImportError:
+    pass
