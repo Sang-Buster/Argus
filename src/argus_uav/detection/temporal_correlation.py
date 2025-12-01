@@ -39,23 +39,27 @@ class TemporalCorrelationDetector(AnomalyDetector):
     def __init__(
         self,
         name: str = "temporal_correlation",
-        threshold: float = 2.5,
-        history_size: int = 10,
-        correlation_threshold: float = 0.85,
+        threshold: float = 0.9,
+        history_size: int = 15,
+        correlation_threshold: float = 0.80,
+        warmup_steps: int = 5,
     ):
         """
         Initialize temporal correlation detector.
 
         Args:
             name: Detector identifier
-            threshold: Standard deviations for anomaly threshold
-            history_size: Number of timesteps to track for correlation
-            correlation_threshold: Minimum correlation for suspicious behavior
+            threshold: Anomaly threshold (lower = more sensitive, default: 0.9 for coordinated attacks)
+            history_size: Number of timesteps to track for correlation (default: 15)
+            correlation_threshold: Minimum correlation for suspicious behavior (default: 0.80)
+            warmup_steps: Number of initial steps to skip for warmup (default: 5)
         """
         super().__init__(name)
         self.threshold = threshold
         self.history_size = history_size
         self.correlation_threshold = correlation_threshold
+        self.warmup_steps = warmup_steps
+        self.detection_count = 0
 
         # Historical data storage
         self.position_history: dict[str, deque] = {}
@@ -178,6 +182,9 @@ class TemporalCorrelationDetector(AnomalyDetector):
                 detection_time=detection_time,
             )
 
+        # Increment detection count
+        self.detection_count += 1
+
         # Update history with current graph
         current_timestamp = time.time()
         self.timestamp_history.append(current_timestamp)
@@ -195,6 +202,18 @@ class TemporalCorrelationDetector(AnomalyDetector):
 
                 self.position_history[node].append(uav.position)
                 self.velocity_history[node].append(uav.velocity)
+
+        # Skip detection during warmup period
+        if self.detection_count <= self.warmup_steps:
+            detection_time = time.time() - start_time
+            return DetectionResult(
+                detector_name=self.name,
+                timestamp=time.time(),
+                anomalous_uav_ids=set(),
+                confidence_scores={uid: 0.0 for uid in graph.nodes()},
+                ground_truth={},
+                detection_time=detection_time,
+            )
 
         # Analyze coordinated behavior
         uav_nodes = [node for node in graph.nodes() if "uav" in graph.nodes[node]]

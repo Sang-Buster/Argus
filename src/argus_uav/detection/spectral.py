@@ -34,20 +34,23 @@ class SpectralDetector(AnomalyDetector):
     def __init__(
         self,
         name: str = "spectral",
-        threshold: float = 2.5,
+        threshold: float = 2.0,
         use_eigenvector_residuals: bool = True,
+        enable_physics_validation: bool = True,
     ):
         """
         Initialize spectral detector.
 
         Args:
             name: Detector identifier
-            threshold: Standard deviations for anomaly threshold
+            threshold: Standard deviations for anomaly threshold (default: 2.0 for balanced performance)
             use_eigenvector_residuals: Enable subspace-based detection
+            enable_physics_validation: Enable physics-based movement validation
         """
         super().__init__(name)
         self.threshold = threshold
         self.use_eigenvector_residuals = use_eigenvector_residuals
+        self.enable_physics_validation = enable_physics_validation
 
         # Baseline statistics
         self.baseline_eigenvalues: list[np.ndarray] = []
@@ -57,6 +60,13 @@ class SpectralDetector(AnomalyDetector):
         self.mean_algebraic_connectivity: float = 0.0
         self.std_algebraic_connectivity: float = 0.0
         self.baseline_subspace: np.ndarray = None  # For eigenvector residuals
+
+        # Physics validation - track previous positions and velocities
+        self.previous_positions: dict[str, tuple[float, float, float]] = {}
+        self.previous_velocities: dict[str, tuple[float, float, float]] = {}
+        self.previous_timestamp: float = 0.0
+        self.max_acceleration: float = 10.0  # m/s^2 (reasonable for UAVs)
+        self.max_speed: float = 30.0  # m/s
 
     def train(self, clean_graphs: list[nx.Graph]) -> None:
         """
@@ -204,12 +214,18 @@ class SpectralDetector(AnomalyDetector):
                 node, positions, graph
             )
 
+            # Physics violation score (detects impossible movements)
+            physics_score = self._compute_physics_violation_score(
+                node, positions, graph, time.time()
+            )
+
             # Combine scores with weights
             combined_score = (
-                0.3 * degree_z_score  # Degree centrality
-                + 0.3 * ac_z_score  # Global connectivity
-                + 0.25 * ev_residual_score  # Eigenvector residual
+                0.25 * degree_z_score  # Degree centrality
+                + 0.25 * ac_z_score  # Global connectivity
+                + 0.20 * ev_residual_score  # Eigenvector residual
                 + 0.15 * position_score  # Position anomaly
+                + 0.15 * physics_score  # Physics violations (NEW!)
             )
 
             confidence_scores[node] = float(combined_score)
@@ -398,3 +414,70 @@ class SpectralDetector(AnomalyDetector):
 
         # Return fraction of inconsistent connections
         return float(inconsistencies / total_checks) * 3.0  # Scale up
+
+    def _compute_physics_violation_score(
+        self,
+        node: str,
+        positions: dict[str, tuple],
+        graph: nx.Graph,
+        current_time: float,
+    ) -> float:
+        """
+        Compute physics-based anomaly score by checking for impossible movements.
+
+        Detects position spoofing by identifying physically impossible accelerations
+        or velocities that violate UAV dynamics constraints.
+
+        Args:
+            node: Node ID
+            positions: Mapping of node ID to position
+            graph: Current graph
+            current_time: Current timestamp
+
+        Returns:
+            Anomaly score (higher = more suspicious)
+        """
+        if not self.enable_physics_validation or node not in positions:
+            return 0.0
+
+        current_pos = np.array(positions[node])
+
+        # First observation - store and return
+        if node not in self.previous_positions:
+            self.previous_positions[node] = positions[node]
+            self.previous_timestamp = current_time
+            return 0.0
+
+        # Compute time delta
+        dt = current_time - self.previous_timestamp
+        if dt <= 0:
+            return 0.0
+
+        # Compute velocity
+        prev_pos = np.array(self.previous_positions[node])
+        displacement = current_pos - prev_pos
+        current_velocity = displacement / dt
+        speed = np.linalg.norm(current_velocity)
+
+        # Check for excessive speed
+        speed_violation = max(0.0, (speed - self.max_speed) / self.max_speed)
+
+        # Check for excessive acceleration (if we have previous velocity)
+        accel_violation = 0.0
+        if node in self.previous_velocities:
+            prev_velocity = np.array(self.previous_velocities[node])
+            acceleration = (current_velocity - prev_velocity) / dt
+            accel_magnitude = np.linalg.norm(acceleration)
+            accel_violation = max(
+                0.0, (accel_magnitude - self.max_acceleration) / self.max_acceleration
+            )
+
+        # Update tracking
+        self.previous_positions[node] = positions[node]
+        self.previous_velocities[node] = tuple(current_velocity)
+        self.previous_timestamp = current_time
+
+        # Combine violations
+        physics_score = speed_violation * 2.0 + accel_violation * 3.0
+
+        return min(5.0, physics_score)  # Cap at 5.0

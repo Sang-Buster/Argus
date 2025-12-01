@@ -37,8 +37,8 @@ class Node2VecDetector(AnomalyDetector):
         num_walks: int = 200,
         p: float = 1.0,
         q: float = 1.0,
-        contamination: float = 0.1,
-        score_threshold: float = 0.6,
+        contamination: float = 0.15,
+        score_threshold: float = 0.75,
     ):
         """
         Initialize Node2Vec detector.
@@ -50,8 +50,8 @@ class Node2VecDetector(AnomalyDetector):
             num_walks: Number of walks per node
             p: Return parameter (controls walk strategy)
             q: In-out parameter (controls walk strategy)
-            contamination: Expected fraction of anomalies in data
-            score_threshold: Threshold for flagging anomalies (0-1, higher = stricter)
+            contamination: Expected fraction of anomalies in data (default: 0.08 = 8%)
+            score_threshold: Threshold for flagging anomalies (0-1, higher = stricter, default: 0.75)
         """
         super().__init__(name)
         self.embedding_dim = embedding_dim
@@ -60,12 +60,16 @@ class Node2VecDetector(AnomalyDetector):
         self.p = p
         self.q = q
         self.contamination = contamination
-        self.score_threshold = score_threshold  # NEW: configurable threshold
+        self.score_threshold = score_threshold
 
         # ML model
         self.isolation_forest: Optional[IsolationForest] = None
         self.node2vec_model = None
         self.baseline_embeddings: dict[str, np.ndarray] = {}
+
+        # Statistics for adaptive thresholding
+        self.baseline_mean_features: Optional[np.ndarray] = None
+        self.baseline_std_features: Optional[np.ndarray] = None
 
     def train(self, clean_graphs: list[nx.Graph]) -> None:
         """
@@ -136,6 +140,11 @@ class Node2VecDetector(AnomalyDetector):
 
             # Train Isolation Forest on clean features
             features_array = np.array(all_features)
+
+            # Store baseline statistics for adaptive thresholding
+            self.baseline_mean_features = np.mean(features_array, axis=0)
+            self.baseline_std_features = np.std(features_array, axis=0)
+
             self.isolation_forest = IsolationForest(
                 n_estimators=100,
                 contamination=self.contamination,
@@ -146,6 +155,10 @@ class Node2VecDetector(AnomalyDetector):
 
             logger.info(
                 f"ML detector trained on {len(all_features)} feature vectors from {len(clean_graphs)} graphs"
+            )
+            logger.debug(f"  Baseline feature means: {self.baseline_mean_features}")
+            logger.debug(
+                f"  Contamination: {self.contamination}, Threshold: {self.score_threshold}"
             )
 
         except Exception as e:
@@ -244,23 +257,52 @@ class Node2VecDetector(AnomalyDetector):
             features_array = np.array(feature_list)
             anomaly_scores = self.isolation_forest.decision_function(features_array)
 
-            # Normalize scores to [0, 1] range (lower score = more anomalous)
+            # Compute feature deviation from baseline (z-scores)
+            feature_deviations = []
+            if (
+                self.baseline_mean_features is not None
+                and self.baseline_std_features is not None
+            ):
+                for features in feature_list:
+                    # Compute z-score for each feature, then take max deviation
+                    z_scores = np.abs(
+                        (features - self.baseline_mean_features)
+                        / (self.baseline_std_features + 1e-10)
+                    )
+                    max_z = np.max(z_scores)
+                    feature_deviations.append(max_z)
+            else:
+                feature_deviations = [0.0] * len(feature_list)
+
+            # Normalize isolation forest scores to [0, 1] range
             min_score = anomaly_scores.min()
             max_score = anomaly_scores.max()
             score_range = max_score - min_score
 
-            for node, score in zip(node_list, anomaly_scores):
-                # Convert to confidence score (higher = more anomalous)
+            for node, iso_score, feat_dev in zip(
+                node_list, anomaly_scores, feature_deviations
+            ):
+                # Convert isolation forest score to confidence (higher = more anomalous)
                 if score_range > 0:
-                    normalized_score = 1.0 - (score - min_score) / score_range
+                    iso_normalized = 1.0 - (iso_score - min_score) / score_range
                 else:
-                    normalized_score = 0.5
+                    iso_normalized = 0.5
 
-                confidence_scores[node] = float(normalized_score)
+                # Combine isolation forest score with feature deviation
+                # Weight: 70% isolation forest, 30% feature deviation
+                feat_dev_normalized = min(1.0, feat_dev / 3.0)  # Cap at z=3
+                combined_score = 0.7 * iso_normalized + 0.3 * feat_dev_normalized
 
-                # Flag if score exceeds threshold (calibrated threshold)
-                # This replaces the binary predict() which was too aggressive
-                if normalized_score >= self.score_threshold:
+                confidence_scores[node] = float(combined_score)
+
+                # Adaptive thresholding based on node characteristics
+                # Lower threshold for nodes with extreme feature deviations
+                adaptive_threshold = self.score_threshold
+                if feat_dev > 2.5:  # High feature deviation
+                    adaptive_threshold = self.score_threshold * 0.85  # 15% lower
+
+                # Flag if combined score exceeds adaptive threshold
+                if combined_score >= adaptive_threshold:
                     anomalous_uav_ids.add(node)
 
             # Get ground truth

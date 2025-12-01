@@ -29,16 +29,23 @@ class CentralityDetector(AnomalyDetector):
     legitimate UAVs in normal operation.
     """
 
-    def __init__(self, name: str = "centrality", threshold: float = 2.0):
+    def __init__(
+        self,
+        name: str = "centrality",
+        threshold: float = 2.5,
+        min_metrics_anomalous: int = 1,
+    ):
         """
         Initialize centrality detector.
 
         Args:
             name: Detector identifier
-            threshold: Standard deviations for anomaly threshold
+            threshold: Standard deviations for anomaly threshold (default: 2.5, stricter than before)
+            min_metrics_anomalous: Minimum number of centrality metrics that must exceed threshold (default: 1)
         """
         super().__init__(name)
         self.threshold = threshold
+        self.min_metrics_anomalous = min_metrics_anomalous
 
         # Baseline statistics
         self.mean_degree: float = 0.0
@@ -153,22 +160,36 @@ class CentralityDetector(AnomalyDetector):
         # Compute anomaly scores for each node
         for node in graph.nodes():
             # Z-scores for each centrality metric
-            degree_z = abs(degree_cent.get(node, 0) - self.mean_degree) / (
-                self.std_degree + 1e-10
+            # Use max(std, 0.10) to avoid division by very small numbers
+            # This prevents false positives when swarm has low variance (stationary/similar topology)
+            # Higher min_std is needed for betweenness/closeness which have very small baseline variance
+            min_std = 0.10
+            degree_z = abs(degree_cent.get(node, 0) - self.mean_degree) / max(
+                self.std_degree, min_std
             )
             betweenness_z = abs(
                 betweenness_cent.get(node, 0) - self.mean_betweenness
-            ) / (self.std_betweenness + 1e-10)
-            closeness_z = abs(closeness_cent.get(node, 0) - self.mean_closeness) / (
-                self.std_closeness + 1e-10
+            ) / max(self.std_betweenness, min_std)
+            closeness_z = abs(closeness_cent.get(node, 0) - self.mean_closeness) / max(
+                self.std_closeness, min_std
             )
 
-            # Combined score (weighted average)
+            # Count how many metrics exceed threshold
+            metrics_above_threshold = 0
+            if degree_z > self.threshold:
+                metrics_above_threshold += 1
+            if betweenness_z > self.threshold:
+                metrics_above_threshold += 1
+            if closeness_z > self.threshold:
+                metrics_above_threshold += 1
+
+            # Combined score (weighted average) for confidence
             combined_score = 0.4 * degree_z + 0.4 * betweenness_z + 0.2 * closeness_z
             confidence_scores[node] = float(combined_score)
 
-            # Flag if above threshold
-            if combined_score > self.threshold:
+            # Flag if minimum number of metrics are anomalous
+            # This reduces false positives by requiring consensus across multiple metrics
+            if metrics_above_threshold >= self.min_metrics_anomalous:
                 anomalous_uav_ids.add(node)
 
         # Get ground truth from graph node attributes if available

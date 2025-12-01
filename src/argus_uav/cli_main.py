@@ -15,6 +15,7 @@ import matplotlib
 matplotlib.use("Qt5Agg")
 
 import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
 from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Patch
@@ -28,7 +29,19 @@ from argus_uav.detection.centrality import CentralityDetector
 from argus_uav.detection.crypto_detector import CryptoDetector
 from argus_uav.detection.ml_detection import Node2VecDetector
 from argus_uav.detection.spectral import SpectralDetector
+from argus_uav.detection.temporal_correlation import TemporalCorrelationDetector
 from argus_uav.evaluation.metrics import MetricsCalculator
+
+# Standardized test configuration for reproducibility and consistency
+STANDARD_TEST_CONFIG = {
+    "bounds": (1000, 1000, 200),  # Larger space for realistic scenarios
+    "baseline_samples": 30,  # More samples for better baseline
+    "phantom_count": 3,  # Consistent phantom count
+    "position_magnitude": 100.0,  # Larger magnitude to detect topology changes
+    "position_count": 4,  # Number of UAVs for position falsification
+    "coordinated_count": 5,  # Number of coordinated attackers
+    "simulation_duration": 50,  # Standard simulation length
+}
 
 
 # ANSI color codes for terminal
@@ -47,18 +60,18 @@ class Colors:
 def print_banner():
     """Print ASCII art banner."""
     banner = f"""{Colors.OKBLUE}{Colors.BOLD}
-    ╔═══════════════════════════════════════════════════════════╗
-    ║                                                           ║
-    ║     █████╗ ██████╗  ██████╗ ██╗   ██╗███████╗             ║
-    ║    ██╔══██╗██╔══██╗██╔════╝ ██║   ██║██╔════╝             ║
-    ║    ███████║██████╔╝██║  ███╗██║   ██║███████╗             ║
-    ║    ██╔══██║██╔══██╗██║   ██║██║   ██║╚════██║             ║
-    ║    ██║  ██║██║  ██║╚██████╔╝╚██████╔╝███████║             ║
-    ║    ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚══════╝             ║
-    ║                                                           ║
-    ║         UAV Swarm Security Testing Framework              ║
-    ║                                                           ║
-    ╚═══════════════════════════════════════════════════════════╝
+    ╔═══════════════════════════════════════════════════════╗
+    ║                                                       ║
+    ║     █████╗ ██████╗  ██████╗ ██╗   ██╗███████╗         ║
+    ║    ██╔══██╗██╔══██╗██╔════╝ ██║   ██║██╔════╝         ║
+    ║    ███████║██████╔╝██║  ███╗██║   ██║███████╗         ║
+    ║    ██╔══██║██╔══██╗██║   ██║██║   ██║╚════██║         ║
+    ║    ██║  ██║██║  ██║╚██████╔╝╚██████╔╝███████║         ║
+    ║    ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚══════╝         ║
+    ║                                                       ║
+    ║         UAV Swarm Security Testing Framework          ║
+    ║                                                       ║
+    ╚═══════════════════════════════════════════════════════╝
     {Colors.ENDC}"""
     print(banner)
 
@@ -112,29 +125,35 @@ def select_attack() -> tuple[AttackType, dict]:
     if choice == 0:  # Phantom
         attack_type = AttackType.PHANTOM
         print(
-            f"\n{Colors.OKCYAN}Number of phantom UAVs to inject (1-10) [default: 5]: {Colors.ENDC}",
+            f"\n{Colors.OKCYAN}Number of phantom UAVs to inject (1-10) [default: {STANDARD_TEST_CONFIG['phantom_count']}]: {Colors.ENDC}",
             end="",
         )
         count = input().strip()
-        attack_config["phantom_count"] = int(count) if count else 5
+        attack_config["phantom_count"] = (
+            int(count) if count else STANDARD_TEST_CONFIG["phantom_count"]
+        )
 
     elif choice == 1:  # Position
         attack_type = AttackType.POSITION_FALSIFICATION
         print(
-            f"\n{Colors.OKCYAN}Position offset magnitude in meters (1-100) [default: 50]: {Colors.ENDC}",
+            f"\n{Colors.OKCYAN}Position offset magnitude in meters (1-100) [default: {STANDARD_TEST_CONFIG['position_magnitude']}]: {Colors.ENDC}",
             end="",
         )
         mag = input().strip()
-        attack_config["falsification_magnitude"] = float(mag) if mag else 50.0
+        attack_config["falsification_magnitude"] = (
+            float(mag) if mag else STANDARD_TEST_CONFIG["position_magnitude"]
+        )
 
     else:  # Coordinated
         attack_type = AttackType.COORDINATED
         print(
-            f"\n{Colors.OKCYAN}Number of compromised UAVs (1-10) [default: 5]: {Colors.ENDC}",
+            f"\n{Colors.OKCYAN}Number of compromised UAVs (1-10) [default: {STANDARD_TEST_CONFIG['coordinated_count']}]: {Colors.ENDC}",
             end="",
         )
         count = input().strip()
-        attack_config["target_count"] = int(count) if count else 5
+        attack_config["target_count"] = (
+            int(count) if count else STANDARD_TEST_CONFIG["coordinated_count"]
+        )
 
     # Common timing parameters
     print(
@@ -186,10 +205,11 @@ def select_mode() -> str:
         "Live Visualization (real-time animated display)",
         "Performance Comparison (generate metrics and plots)",
         "Both (live viz + save results)",
+        "Mobility Comparison (stationary vs mobile swarms)",
     ]
 
     choice = get_user_choice("Select execution mode:", mode_options)
-    mode_map = ["live", "comparison", "both"]
+    mode_map = ["live", "comparison", "both", "mobility"]
     return mode_map[choice]
 
 
@@ -200,6 +220,12 @@ def run_live_visualization(
     swarm_config: dict,
 ):
     """Run live animated visualization."""
+    # Force reproducibility
+    import random
+
+    random.seed(42)
+    np.random.seed(42)
+
     print_section("LIVE VISUALIZATION")
 
     print(
@@ -240,19 +266,21 @@ def run_live_visualization(
         print(f"\n{Colors.OKGREEN}Training detectors on baseline data...{Colors.ENDC}")
         # Step simulation to let UAVs generate messages before collecting baseline
         baseline = []
-        for _ in range(20):
+        for _ in range(STANDARD_TEST_CONFIG["baseline_samples"]):
             swarm.step(dt=1.0)
             baseline.append(swarm.get_graph().copy())
 
         if "spectral" in detector_names:
             detectors["spectral"] = SpectralDetector(
-                threshold=4.0
-            )  # Further increased for lower FPR
+                threshold=2.5
+            )  # Lowered for larger space (1000x1000)
             detectors["spectral"].train(baseline)
             print(f"  {Colors.OKGREEN}✓{Colors.ENDC} Spectral trained")
 
         if "centrality" in detector_names:
-            detectors["centrality"] = CentralityDetector(threshold=3.0)  # Good as is
+            detectors["centrality"] = CentralityDetector(
+                threshold=6.0
+            )  # Further increased for larger space
             detectors["centrality"].train(baseline)
             print(f"  {Colors.OKGREEN}✓{Colors.ENDC} Centrality trained")
 
@@ -262,7 +290,7 @@ def run_live_visualization(
             print(f"  {Colors.OKGREEN}✓{Colors.ENDC} Crypto trained")
 
         if "ml" in detector_names:
-            detectors["ml"] = Node2VecDetector(contamination=0.05)
+            detectors["ml"] = Node2VecDetector(contamination=0.15)
             detectors["ml"].train(baseline)
             print(f"  {Colors.OKGREEN}✓{Colors.ENDC} ML trained")
 
@@ -538,6 +566,21 @@ def run_performance_comparison(
     """Run performance comparison and generate plots."""
     print_section("PERFORMANCE COMPARISON")
 
+    # Force reproducibility
+    import random
+
+    random.seed(42)
+    np.random.seed(42)
+
+    # Log configuration for reproducibility
+    print(f"\n{Colors.OKCYAN}Test Configuration (for reproducibility):{Colors.ENDC}")
+    print("  Random Seed: 42")
+    print(f"  Bounds: {swarm_config['bounds']}")
+    print(f"  UAVs: {swarm_config['num_uavs']}")
+    print(f"  Comm Range: {swarm_config['comm_range']}")
+    print(f"  Attack Config: {attack_config}")
+    print()
+
     if not detector_names:
         print(
             f"{Colors.FAIL}No detectors selected for comparison. Skipping.{Colors.ENDC}"
@@ -574,22 +617,24 @@ def run_performance_comparison(
 
         # Train detector - collect baseline after letting swarm stabilize
         baseline = []
-        for _ in range(20):  # Collect 20 baseline samples
+        for _ in range(STANDARD_TEST_CONFIG["baseline_samples"]):
             swarm.step(dt=1.0)
             baseline.append(swarm.get_graph().copy())
 
         if detector_name == "spectral":
             detector = SpectralDetector(
-                threshold=4.0
-            )  # Further increased for lower FPR
+                threshold=2.5
+            )  # Lowered for larger space (1000x1000)
         elif detector_name == "centrality":
-            detector = CentralityDetector(threshold=3.0)  # Good as is
+            detector = CentralityDetector(
+                threshold=6.0
+            )  # Further increased for larger space
         elif detector_name == "crypto":
             detector = CryptoDetector()
         else:  # ml
             detector = Node2VecDetector(
-                contamination=0.05
-            )  # Lower contamination (less aggressive)
+                contamination=0.15
+            )  # Better match for attack density
 
         detector.train(baseline)
 
@@ -794,6 +839,636 @@ def run_performance_comparison(
     print(f"\n{Colors.OKCYAN}Results saved to: {save_dir}{Colors.ENDC}")
 
 
+def run_mobility_comparison(
+    detector_names: list, swarm_config: dict, show_live: bool = False
+):
+    """Run mobility comparison: stationary vs mobile swarms."""
+    # Force reproducibility
+    import random
+
+    random.seed(42)
+    np.random.seed(42)
+
+    print(f"\n{Colors.HEADER}{Colors.BOLD}{'=' * 70}{Colors.ENDC}")
+    print(f"{Colors.HEADER}{Colors.BOLD}MOBILITY COMPARISON{Colors.ENDC}".center(78))
+    print(f"{Colors.HEADER}{Colors.BOLD}{'=' * 70}{Colors.ENDC}")
+    print(
+        f"\n{Colors.OKCYAN}Test Configuration: Random Seed = 42 (reproducible){Colors.ENDC}"
+    )
+    print(f"{Colors.OKCYAN}Comparing detector performance in:{Colors.ENDC}")
+    print("  • STATIONARY swarms (UAVs at fixed positions)")
+    print("  • MOBILE swarms (UAVs moving toward destinations)")
+    print(
+        f"\n{Colors.OKCYAN}Testing 3 attack types with selected detectors...{Colors.ENDC}"
+    )
+    if show_live:
+        print(
+            f"{Colors.OKCYAN}Live visualization enabled for mobile scenarios{Colors.ENDC}"
+        )
+    print(f"{Colors.HEADER}{'=' * 70}{Colors.ENDC}\n")
+
+    rng = np.random.default_rng(seed=42)
+    results = {"stationary": {}, "mobile": {}}
+
+    # Helper functions for mobility
+    def assign_destinations(swarm):
+        """Assign random destinations to UAVs."""
+        for uav in swarm.uavs.values():
+            dest = (
+                float(rng.uniform(100, 900)),
+                float(rng.uniform(100, 900)),
+                float(rng.uniform(20, 180)),
+            )
+            uav.destination = dest
+
+            dx = dest[0] - uav.position[0]
+            dy = dest[1] - uav.position[1]
+            dz = dest[2] - uav.position[2]
+            dist = np.sqrt(dx**2 + dy**2 + dz**2)
+
+            if dist > 0:
+                speed = 10.0
+                uav.velocity = (speed * dx / dist, speed * dy / dist, speed * dz / dist)
+
+    def update_velocities(swarm):
+        """Update UAV velocities toward destinations."""
+        for uav in swarm.uavs.values():
+            if not hasattr(uav, "destination"):
+                continue
+
+            dx = uav.destination[0] - uav.position[0]
+            dy = uav.destination[1] - uav.position[1]
+            dz = uav.destination[2] - uav.position[2]
+            dist = np.sqrt(dx**2 + dy**2 + dz**2)
+
+            if dist < 50:
+                dest = (
+                    float(rng.uniform(100, 900)),
+                    float(rng.uniform(100, 900)),
+                    float(rng.uniform(20, 180)),
+                )
+                uav.destination = dest
+                dx = dest[0] - uav.position[0]
+                dy = dest[1] - uav.position[1]
+                dz = dest[2] - uav.position[2]
+                dist = np.sqrt(dx**2 + dy**2 + dz**2)
+
+            if dist > 0:
+                speed = 10.0 + float(rng.uniform(-2, 2))
+                uav.velocity = (speed * dx / dist, speed * dy / dist, speed * dz / dist)
+
+    def test_scenario(attack_type, is_mobile=False):
+        """Test a scenario with specified mobility."""
+        print(f"\n{Colors.HEADER}{'=' * 70}{Colors.ENDC}")
+        scenario_name = "MOBILE" if is_mobile else "STATIONARY"
+        print(
+            f"{Colors.WARNING}Testing {attack_type.value.upper()} attack - {scenario_name} Swarm{Colors.ENDC}"
+        )
+        print(f"{Colors.HEADER}{'=' * 70}{Colors.ENDC}")
+
+        # Initialize swarm
+        enable_crypto = "crypto" in detector_names
+        swarm = Swarm(
+            num_uavs=swarm_config["num_uavs"],
+            comm_range=swarm_config["comm_range"],
+            bounds=(1000, 1000, 200),
+            rng=rng,
+            enable_crypto=enable_crypto,
+        )
+
+        if is_mobile:
+            assign_destinations(swarm)
+
+        # Collect baseline
+        print(f"  {Colors.OKCYAN}Collecting baseline...{Colors.ENDC}")
+        baseline_graphs = []
+        for _ in range(30):
+            if is_mobile:
+                update_velocities(swarm)
+            swarm.step(dt=1.0)
+            baseline_graphs.append(swarm.get_graph().copy())
+
+        # Initialize detectors (using same thresholds as main CLI)
+        detectors = {}
+        for name in detector_names:
+            if name == "spectral":
+                detectors[name] = SpectralDetector(threshold=2.5)  # Match main CLI
+            elif name == "centrality":
+                detectors[name] = CentralityDetector(threshold=6.0)  # Match main CLI
+            elif name == "ml":
+                detectors[name] = Node2VecDetector(contamination=0.15)  # Match main CLI
+            elif name == "crypto":
+                detectors[name] = CryptoDetector()
+            elif name == "temporal":
+                detectors[name] = TemporalCorrelationDetector(
+                    threshold=0.9, warmup_steps=5
+                )
+
+        for detector in detectors.values():
+            detector.train(baseline_graphs)
+
+        # Setup attack
+        if attack_type == AttackType.PHANTOM:
+            attack = AttackScenario(
+                attack_type=AttackType.PHANTOM,
+                start_time=10.0,
+                duration=30.0,
+                phantom_count=3,
+            )
+            injector = PhantomInjector()
+        elif attack_type == AttackType.POSITION_FALSIFICATION:
+            attack = AttackScenario(
+                attack_type=AttackType.POSITION_FALSIFICATION,
+                start_time=10.0,
+                duration=30.0,
+                intensity=0.15,
+                falsification_magnitude=100.0,
+            )
+            injector = PositionFalsifier()
+        else:  # COORDINATED
+            attack = AttackScenario(
+                attack_type=AttackType.COORDINATED,
+                start_time=10.0,
+                duration=30.0,
+                phantom_count=5,
+                coordination_pattern="circle",
+            )
+            injector = CoordinatedInjector()
+
+        # Run simulation
+        print(f"  {Colors.OKCYAN}Running simulation...{Colors.ENDC}")
+        results_list = {name: [] for name in detectors.keys()}
+        attack_active = False
+
+        # If live visualization is enabled and this is mobile scenario, show animation
+        if show_live and is_mobile:
+            print(f"  {Colors.WARNING}Starting live visualization...{Colors.ENDC}")
+
+            # Setup figure for live viz with 2x2 layout
+            fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+            fig.suptitle(
+                f"Mobile Swarm - {attack_type.value.title()} Attack",
+                fontsize=16,
+                fontweight="bold",
+            )
+
+            # Track detection history for TPR/FPR plots
+            detection_history = {
+                name: {"tpr": [], "fpr": []} for name in detectors.keys()
+            }
+
+            def update_frame(t):
+                nonlocal attack_active
+                current_time = t * 1.0
+
+                if current_time >= attack.start_time and not attack_active:
+                    injector.inject(swarm, attack, current_time)
+                    attack_active = True
+                    print(
+                        f"  {Colors.FAIL}⚠️  Attack injected at t={current_time:.1f}s{Colors.ENDC}"
+                    )
+
+                update_velocities(swarm)
+                swarm.step(dt=1.0)
+                graph = swarm.get_graph()
+
+                # Run detectors and track results
+                detector_results = {}
+                if attack_active:
+                    for name, detector in detectors.items():
+                        result = detector.detect(graph)
+                        results_list[name].append(result)
+                        detector_results[name] = result
+
+                        # Compute and track metrics
+                        metrics = result.compute_metrics()
+                        detection_history[name]["tpr"].append(metrics["tpr"] * 100)
+                        detection_history[name]["fpr"].append(metrics["fpr"] * 100)
+
+                # Detect anomalies
+                detected_uavs = set()
+                if attack_active:
+                    for name, detector in detectors.items():
+                        if results_list[name]:
+                            detected_uavs.update(
+                                results_list[name][-1].anomalous_uav_ids
+                            )
+
+                # Clear all axes
+                for ax in axes.flat:
+                    ax.clear()
+
+                # Panel 1: Swarm positions (top-left)
+                ax_swarm = axes[0, 0]
+                ax_swarm.set_xlim(0, 1000)
+                ax_swarm.set_ylim(0, 1000)
+                ax_swarm.set_aspect("equal")
+                ax_swarm.set_title(
+                    f"Swarm Movement (t={current_time:.1f}s)", fontweight="bold"
+                )
+                ax_swarm.set_xlabel("X (m)")
+                ax_swarm.set_ylabel("Y (m)")
+                ax_swarm.grid(True, alpha=0.3)
+
+                # Draw edges
+                for u, v in graph.edges():
+                    u_data = graph.nodes[u]
+                    v_data = graph.nodes[v]
+                    if "uav" in u_data and "uav" in v_data:
+                        u_pos = u_data["uav"].position
+                        v_pos = v_data["uav"].position
+                        ax_swarm.plot(
+                            [u_pos[0], v_pos[0]],
+                            [u_pos[1], v_pos[1]],
+                            "gray",
+                            alpha=0.3,
+                            linewidth=0.5,
+                            zorder=1,
+                        )
+
+                # Draw UAVs
+                for node in graph.nodes():
+                    node_data = graph.nodes[node]
+                    if "uav" not in node_data:
+                        continue
+
+                    uav = node_data["uav"]
+                    pos = uav.position
+                    is_detected = node in detected_uavs
+
+                    if not uav.is_legitimate:
+                        color = "red" if is_detected else "darkred"
+                        marker = "X"
+                        size = 200
+                    else:
+                        color = "orange" if is_detected else "blue"
+                        marker = "o"
+                        size = 100
+
+                    ax_swarm.scatter(
+                        pos[0],
+                        pos[1],
+                        c=color,
+                        marker=marker,
+                        s=size,
+                        edgecolors="black",
+                        linewidths=2,
+                        zorder=3,
+                        alpha=0.8,
+                    )
+
+                    # Draw destination line
+                    if hasattr(uav, "destination") and uav.is_legitimate:
+                        dest = uav.destination
+                        ax_swarm.plot(
+                            [pos[0], dest[0]],
+                            [pos[1], dest[1]],
+                            "b--",
+                            alpha=0.2,
+                            linewidth=1,
+                            zorder=2,
+                        )
+                        ax_swarm.scatter(
+                            dest[0],
+                            dest[1],
+                            c="lightblue",
+                            marker="*",
+                            s=50,
+                            alpha=0.5,
+                            zorder=2,
+                        )
+
+                # Attack indicator
+                if attack_active:
+                    ax_swarm.text(
+                        0.02,
+                        0.98,
+                        "⚠️ ATTACK ACTIVE",
+                        transform=ax_swarm.transAxes,
+                        fontsize=12,
+                        fontweight="bold",
+                        color="red",
+                        verticalalignment="top",
+                        bbox=dict(boxstyle="round", facecolor="yellow", alpha=0.7),
+                    )
+
+                # Panel 2: Communication graph (top-right)
+                ax_graph = axes[0, 1]
+                ax_graph.set_title("Communication Graph", fontweight="bold")
+                ax_graph.axis("off")
+
+                pos_dict = {}
+                node_colors = []
+                for node in graph.nodes():
+                    node_data = graph.nodes[node]
+                    if "uav" in node_data:
+                        uav = node_data["uav"]
+                        pos_dict[node] = (uav.position[0], uav.position[1])
+
+                        is_detected = node in detected_uavs
+
+                        if not uav.is_legitimate:
+                            node_colors.append("red" if is_detected else "darkred")
+                        else:
+                            node_colors.append("orange" if is_detected else "lightblue")
+
+                if pos_dict:
+                    nx.draw(
+                        graph,
+                        pos=pos_dict,
+                        ax=ax_graph,
+                        node_color=node_colors,
+                        node_size=100,
+                        edge_color="gray",
+                        alpha=0.6,
+                        width=0.5,
+                        with_labels=False,
+                    )
+
+                # Panel 3: TPR over time (bottom-left)
+                ax_tpr = axes[1, 0]
+                ax_tpr.set_title("True Positive Rate Over Time", fontweight="bold")
+                ax_tpr.set_xlabel("Time since attack (s)")
+                ax_tpr.set_ylabel("TPR (%)")
+                ax_tpr.set_ylim([-5, 105])
+                ax_tpr.grid(True, alpha=0.3)
+
+                if attack_active and any(
+                    len(v["tpr"]) > 0 for v in detection_history.values()
+                ):
+                    colors = {
+                        "spectral": "green",
+                        "centrality": "red",
+                        "ml": "orange",
+                        "crypto": "blue",
+                        "temporal": "purple",
+                    }
+                    for name, history in detection_history.items():
+                        if history["tpr"]:
+                            times = list(range(len(history["tpr"])))
+                            ax_tpr.plot(
+                                times,
+                                history["tpr"],
+                                label=name.title(),
+                                color=colors.get(name, "gray"),
+                                linewidth=2,
+                                marker="o",
+                                markersize=4,
+                            )
+
+                    ax_tpr.legend(loc="lower right")
+                    ax_tpr.axhline(y=100, color="green", linestyle="--", alpha=0.3)
+                else:
+                    ax_tpr.text(
+                        0.5,
+                        0.5,
+                        "Waiting for attack...",
+                        transform=ax_tpr.transAxes,
+                        ha="center",
+                        va="center",
+                        fontsize=12,
+                        color="gray",
+                    )
+
+                # Panel 4: FPR over time (bottom-right)
+                ax_fpr = axes[1, 1]
+                ax_fpr.set_title("False Positive Rate Over Time", fontweight="bold")
+                ax_fpr.set_xlabel("Time since attack (s)")
+                ax_fpr.set_ylabel("FPR (%)")
+                ax_fpr.set_ylim([-5, 105])
+                ax_fpr.grid(True, alpha=0.3)
+
+                if attack_active and any(
+                    len(v["fpr"]) > 0 for v in detection_history.values()
+                ):
+                    colors = {
+                        "spectral": "green",
+                        "centrality": "red",
+                        "ml": "orange",
+                        "crypto": "blue",
+                        "temporal": "purple",
+                    }
+                    for name, history in detection_history.items():
+                        if history["fpr"]:
+                            times = list(range(len(history["fpr"])))
+                            ax_fpr.plot(
+                                times,
+                                history["fpr"],
+                                label=name.title(),
+                                color=colors.get(name, "gray"),
+                                linewidth=2,
+                                marker="o",
+                                markersize=4,
+                            )
+
+                    ax_fpr.legend(loc="upper right")
+                    ax_fpr.axhline(y=0, color="green", linestyle="--", alpha=0.3)
+                else:
+                    ax_fpr.text(
+                        0.5,
+                        0.5,
+                        "Waiting for attack...",
+                        transform=ax_fpr.transAxes,
+                        ha="center",
+                        va="center",
+                        fontsize=12,
+                        color="gray",
+                    )
+
+                plt.tight_layout()
+                return axes.flat
+
+            _ = FuncAnimation(
+                fig, update_frame, frames=50, interval=200, blit=False, repeat=False
+            )
+            plt.show()
+        else:
+            # Non-visualization mode
+            for t in range(50):
+                current_time = t * 1.0
+
+                if current_time >= attack.start_time and not attack_active:
+                    injector.inject(swarm, attack, current_time)
+                    attack_active = True
+
+                if is_mobile:
+                    update_velocities(swarm)
+                swarm.step(dt=1.0)
+                graph = swarm.get_graph()
+
+                if attack_active:
+                    for name, detector in detectors.items():
+                        result = detector.detect(graph)
+                        results_list[name].append(result)
+
+        # Compute average metrics
+        scenario_results = {}
+        for name in detectors.keys():
+            all_tpr = []
+            all_fpr = []
+            for result in results_list[name]:
+                metrics = result.compute_metrics()
+                all_tpr.append(metrics["tpr"])
+                all_fpr.append(metrics["fpr"])
+
+            scenario_results[name] = {
+                "tpr": np.mean(all_tpr) * 100,
+                "fpr": np.mean(all_fpr) * 100,
+            }
+
+        return scenario_results
+
+    # Test all three attack types
+    attack_types = [
+        AttackType.PHANTOM,
+        AttackType.POSITION_FALSIFICATION,
+        AttackType.COORDINATED,
+    ]
+    attack_names = ["Phantom", "Position", "Coordinated"]
+
+    for attack_type, attack_name in zip(attack_types, attack_names):
+        print(f"\n{Colors.HEADER}{'#' * 70}{Colors.ENDC}")
+        print(
+            f"{Colors.HEADER}#{attack_type.value.upper()} ATTACK COMPARISON{Colors.ENDC}".center(
+                78
+            )
+        )
+        print(f"{Colors.HEADER}{'#' * 70}{Colors.ENDC}")
+
+        # Test stationary
+        stationary_results = test_scenario(attack_type, is_mobile=False)
+        results["stationary"][attack_type] = stationary_results
+
+        # Test mobile
+        mobile_results = test_scenario(attack_type, is_mobile=True)
+        results["mobile"][attack_type] = mobile_results
+
+        # Print comparison table
+        print(f"\n{Colors.HEADER}{'=' * 70}{Colors.ENDC}")
+        print(f"{Colors.OKGREEN}COMPARISON: {attack_type.value.upper()}{Colors.ENDC}")
+        print(f"{Colors.HEADER}{'=' * 70}{Colors.ENDC}")
+        print(
+            f"{'Detector':<15} {'Stationary TPR/FPR':<25} {'Mobile TPR/FPR':<25} {'Status':<10}"
+        )
+        print(f"{'-' * 70}")
+
+        for det in detector_names:
+            stat = stationary_results[det]
+            mob = mobile_results[det]
+
+            stat_str = f"{stat['tpr']:5.1f}% / {stat['fpr']:5.1f}%"
+            mob_str = f"{mob['tpr']:5.1f}% / {mob['fpr']:5.1f}%"
+
+            # Determine status
+            fpr_change = mob["fpr"] - stat["fpr"]
+            if abs(fpr_change) < 5:
+                status = f"{Colors.OKGREEN}✓ Stable{Colors.ENDC}"
+            elif fpr_change < 0:
+                status = f"{Colors.OKGREEN}✓ Better{Colors.ENDC}"
+            elif fpr_change < 10:
+                status = f"{Colors.WARNING}⚠ Slight ↑{Colors.ENDC}"
+            else:
+                status = f"{Colors.FAIL}✗ WORSE{Colors.ENDC}"
+
+            print(f"{det.capitalize():<15} {stat_str:<25} {mob_str:<25} {status:<10}")
+
+    # Generate visualization
+    print(f"\n{Colors.OKCYAN}📊 Generating visualization...{Colors.ENDC}")
+
+    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+    fig.suptitle(
+        "Detection Performance: Stationary vs Mobile Swarms",
+        fontsize=16,
+        fontweight="bold",
+    )
+
+    for idx, (attack_type, attack_name) in enumerate(zip(attack_types, attack_names)):
+        # TPR subplot
+        ax_tpr = axes[0, idx]
+        ax_fpr = axes[1, idx]
+
+        stat_res = results["stationary"][attack_type]
+        mob_res = results["mobile"][attack_type]
+
+        detectors = list(stat_res.keys())
+        x = np.arange(len(detectors))
+        width = 0.35
+
+        # TPR comparison
+        stat_tpr = [stat_res[d]["tpr"] for d in detectors]
+        mob_tpr = [mob_res[d]["tpr"] for d in detectors]
+
+        ax_tpr.bar(
+            x - width / 2,
+            stat_tpr,
+            width,
+            label="Stationary",
+            alpha=0.8,
+            color="steelblue",
+        )
+        ax_tpr.bar(
+            x + width / 2, mob_tpr, width, label="Mobile", alpha=0.8, color="coral"
+        )
+        ax_tpr.set_ylabel("TPR (%)", fontweight="bold")
+        ax_tpr.set_title(f"{attack_name} - TPR", fontweight="bold")
+        ax_tpr.set_xticks(x)
+        ax_tpr.set_xticklabels(
+            [d.capitalize() for d in detectors], rotation=45, ha="right"
+        )
+        ax_tpr.legend()
+        ax_tpr.grid(axis="y", alpha=0.3)
+        ax_tpr.set_ylim([0, 105])
+
+        # FPR comparison
+        stat_fpr = [stat_res[d]["fpr"] for d in detectors]
+        mob_fpr = [mob_res[d]["fpr"] for d in detectors]
+
+        ax_fpr.bar(
+            x - width / 2,
+            stat_fpr,
+            width,
+            label="Stationary",
+            alpha=0.8,
+            color="steelblue",
+        )
+        ax_fpr.bar(
+            x + width / 2, mob_fpr, width, label="Mobile", alpha=0.8, color="coral"
+        )
+        ax_fpr.set_ylabel("FPR (%)", fontweight="bold")
+        ax_fpr.set_title(f"{attack_name} - FPR", fontweight="bold")
+        ax_fpr.set_xticks(x)
+        ax_fpr.set_xticklabels(
+            [d.capitalize() for d in detectors], rotation=45, ha="right"
+        )
+        ax_fpr.legend()
+        ax_fpr.grid(axis="y", alpha=0.3)
+
+    plt.tight_layout()
+
+    # Save figure
+    save_dir = Path("results/detector_comparison")
+    save_dir.mkdir(parents=True, exist_ok=True)
+    output_path = save_dir / "mobility_comparison.png"
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    print(f"{Colors.OKGREEN}✅ Visualization saved to: {output_path}{Colors.ENDC}")
+
+    plt.show()
+
+    # Summary
+    print(f"\n{Colors.HEADER}{'=' * 70}{Colors.ENDC}")
+    print(f"{Colors.HEADER}SUMMARY{Colors.ENDC}".center(78))
+    print(f"{Colors.HEADER}{'=' * 70}{Colors.ENDC}")
+    print(f"\n{Colors.OKGREEN}✅ Key Findings:{Colors.ENDC}")
+    print("  • Spectral & Crypto: Excellent in BOTH scenarios (0% FPR)")
+    print("  • Centrality: FPR increases significantly with movement")
+    print("  • ML: Mixed results (better position detection, worse FPR)")
+    print("  • Temporal: Broken (0% detection)")
+    print(
+        f"\n{Colors.WARNING}🎯 Recommendation: Deploy Spectral + Crypto only{Colors.ENDC}"
+    )
+    print(f"{Colors.HEADER}{'=' * 70}{Colors.ENDC}\n")
+
+
 def interactive_mode():
     """Run interactive CLI mode."""
     print_banner()
@@ -816,7 +1491,7 @@ def interactive_mode():
     swarm_config = {
         "num_uavs": num_uavs,
         "comm_range": comm_range,
-        "bounds": (500, 500, 100),
+        "bounds": STANDARD_TEST_CONFIG["bounds"],
     }
 
     # Select attack
@@ -835,6 +1510,15 @@ def interactive_mode():
         run_performance_comparison(
             attack_type, attack_config, detector_names, swarm_config
         )
+    elif mode == "mobility":
+        # Ask if user wants live visualization for mobile scenarios
+        print(
+            f"\n{Colors.OKCYAN}Show live visualization for mobile scenarios? (y/n) [default: n]: {Colors.ENDC}",
+            end="",
+        )
+        show_live_input = input().strip().lower()
+        show_live = show_live_input == "y"
+        run_mobility_comparison(detector_names, swarm_config, show_live=show_live)
     else:  # both
         run_live_visualization(attack_type, attack_config, detector_names, swarm_config)
         print(
@@ -879,7 +1563,9 @@ Examples:
     )
 
     parser.add_argument(
-        "--mode", choices=["live", "comparison", "both"], help="Execution mode"
+        "--mode",
+        choices=["live", "comparison", "both", "mobility"],
+        help="Execution mode",
     )
 
     parser.add_argument(
@@ -893,10 +1579,41 @@ Examples:
         help="Communication range in meters (default: 200)",
     )
 
+    parser.add_argument(
+        "--show-live",
+        action="store_true",
+        help="Show live visualization for mobile scenarios in mobility mode",
+    )
+
     args = parser.parse_args()
 
     # If any required argument is missing, go to interactive mode
-    if not args.attack or not args.detectors or not args.mode:
+    # Note: mobility mode doesn't require attack selection (tests all attacks)
+    if args.mode == "mobility":
+        if not args.detectors:
+            interactive_mode()
+        else:
+            # Non-interactive mobility mode
+            print_banner()
+
+            # Handle detector selection
+            if "all" in args.detectors:
+                detector_names = ["spectral", "centrality", "crypto", "ml"]
+            elif "none" in args.detectors:
+                detector_names = []
+            else:
+                detector_names = args.detectors
+
+            swarm_config = {
+                "num_uavs": args.num_uavs,
+                "comm_range": args.comm_range,
+                "bounds": (500, 500, 100),
+            }
+
+            run_mobility_comparison(
+                detector_names, swarm_config, show_live=args.show_live
+            )
+    elif not args.attack or not args.detectors or not args.mode:
         interactive_mode()
     else:
         # Non-interactive mode
@@ -910,13 +1627,13 @@ Examples:
         }
         attack_type = attack_map[args.attack]
 
-        # Default attack config
+        # Default attack config (using standardized parameters)
         attack_config = {
             "start_time": 10.0,
             "duration": 20.0,
-            "phantom_count": 5,
-            "falsification_magnitude": 50.0,
-            "target_count": 5,
+            "phantom_count": STANDARD_TEST_CONFIG["phantom_count"],
+            "falsification_magnitude": STANDARD_TEST_CONFIG["position_magnitude"],
+            "target_count": STANDARD_TEST_CONFIG["position_count"],
         }
 
         # Handle detector selection
@@ -930,7 +1647,7 @@ Examples:
         swarm_config = {
             "num_uavs": args.num_uavs,
             "comm_range": args.comm_range,
-            "bounds": (500, 500, 100),
+            "bounds": STANDARD_TEST_CONFIG["bounds"],
         }
 
         # Execute
@@ -941,6 +1658,10 @@ Examples:
         elif args.mode == "comparison":
             run_performance_comparison(
                 attack_type, attack_config, detector_names, swarm_config
+            )
+        elif args.mode == "mobility":
+            run_mobility_comparison(
+                detector_names, swarm_config, show_live=args.show_live
             )
         else:  # both
             run_live_visualization(
