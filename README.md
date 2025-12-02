@@ -21,6 +21,23 @@ Argus is a research framework for investigating UAV swarm vulnerabilities to Rem
 - 📍 **Position Falsification**: Legitimate UAVs reporting spoofed GPS coordinates
 - 🔀 **Coordinated Attacks**: Multiple synchronized spoofers disrupting swarm consensus
 
+<table>
+  <tr>
+    <th>Paper</th>
+    <th>Presentation</th>
+  </tr>
+  <tr>
+    <td align="center">
+          <a href="https://github.com/Sang-Buster/Argus/blob/main/assets/paper.pdf"><img src="https://raw.githubusercontent.com/Sang-Buster/Argus/refs/heads/main/assets/paper.png" /></a>
+          <a href="https://github.com/Sang-Buster/Argus/blob/main/assets/paper.pdf"><img src="https://img.shields.io/badge/View%20More-282c34?style=for-the-badge&logoColor=white" width="100" /></a>
+    </td>
+    <td align="center">
+          <a href="https://github.com/Sang-Buster/Argus/blob/main/assets/presentation.pdf"><img src="https://raw.githubusercontent.com/Sang-Buster/Argus/refs/heads/main/assets/presentation.png" /></a>
+          <a href="https://github.com/Sang-Buster/Argus/blob/main/assets/presentation.pdf"><img src="https://img.shields.io/badge/View%20More-282c34?style=for-the-badge&logoColor=white" width="100" /></a>
+    </td>
+  </tr>
+</table>
+
 ### Key Features
 
 - **Swarm Simulation**: Dynamic graph-based UAV network modeling with configurable parameters
