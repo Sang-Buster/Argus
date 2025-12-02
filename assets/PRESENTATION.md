@@ -14,10 +14,11 @@ Sang Xing
 
 **Key Results**:
 
-- ✅ 4 detection methods implemented
-- ✅ Perfect detection achieved (F1=1.0 with crypto)
-- ✅ System scales to 250+ UAVs
-- ✅ Real-time performance (<100ms detection)
+- ✅ 4 detection methods evaluated
+- ✅ Cryptographic authentication: Perfect for phantom/coordinated (F1=1.0), ~58ms
+- ⚠️ Position falsification: Unsolved (F1=0.0 for all methods)
+- ❌ Graph heuristics unsuitable: ML/Centrality FPR=87-100%
+- ✅ Real-time performance validated for 20-30 UAV swarms
 
 ---
 
@@ -171,17 +172,17 @@ Sang Xing
 
 ### Spectral Detection: Results
 
-**Performance** (Enhanced Version with Eigenvector Residuals):
+**Performance**:
 
-| Attack Type | TPR  | FPR  | F1   | Time  |
-| ----------- | ---- | ---- | ---- | ----- |
-| Phantom     | 1.00 | 0.00 | 1.00 | 1-2ms |
-| Position    | 1.00 | 0.00 | 1.00 | 1-2ms |
-| Coordinated | 1.00 | 0.00 | 1.00 | 1-2ms |
+| Attack Type | TPR  | FPR  | F1   | Time |
+| ----------- | ---- | ---- | ---- | ---- |
+| Phantom     | 1.00 | 0.00 | 1.00 | ~2ms |
+| Position    | 0.00 | 0.00 | 0.00 | ~2ms |
+| Coordinated | 1.00 | 0.00 | 1.00 | ~2ms |
 
-✅ **Perfect detection across all attack types!**
+✅ **Perfect detection for phantom and coordinated attacks!**
 
-**Key Innovation**: Added eigenvector residuals + legitimacy scoring
+⚠️ **Cannot detect position falsification** - Attack preserves topology
 
 ---
 
@@ -212,54 +213,54 @@ Flag if score > threshold (2.0)
 
 **Performance**:
 
-| Attack Type | TPR  | FPR  | F1   | Time   |
-| ----------- | ---- | ---- | ---- | ------ |
-| Phantom     | 0.49 | 0.56 | 0.32 | 3-10ms |
-| Position    | 1.00 | 0.50 | 0.40 | 3-10ms |
-| Coordinated | 0.77 | 0.50 | 0.44 | 3-10ms |
+| Attack Type | TPR  | FPR  | F1   | Time |
+| ----------- | ---- | ---- | ---- | ---- |
+| Phantom     | 0.67 | 1.00 | 0.11 | ~1ms |
+| Position    | 1.00 | 1.00 | 0.18 | ~1ms |
+| Coordinated | 1.00 | 1.00 | 0.17 | ~1ms |
 
-⚠️ **Moderate performance** - High FPR limits usefulness
+❌ **Unacceptable performance** - 100% false positive rate!
 
-**Why**: Normal network dynamics create false positives
+**Why**: High threshold sensitivity, flags too many legitimate UAVs
 
 ---
 
 ## Detection Method 3: Machine Learning
 
-### Enhanced ML Detector (Research Version)
+### ML Detector with Isolation Forest
 
 **Architecture**:
 
-- **Ensemble**: Isolation Forest + LOF + One-Class SVM
-- **Features**: 17 graph metrics (degree, betweenness, clustering, etc.)
-- **Preprocessing**: StandardScaler + PCA (95% variance)
-- **Calibration**: Quantile-based threshold tuning
+- **Algorithm**: Isolation Forest (anomaly detection)
+- **Features**: 4 graph metrics per node
+  - Degree centrality
+  - Betweenness centrality
+  - Clustering coefficient
+  - Closeness centrality
+- **Training**: Contamination parameter α = 0.15 (expects 15% anomalies)
 
 ### Algorithm
 
-1. Extract 17 features per node (structural + temporal)
-2. Normalize and reduce dimensions with PCA
-3. Train ensemble on baseline graphs
-4. Voting mechanism: Flag if 2+ detectors agree
+1. Extract 4-feature vector per node from baseline graphs
+2. Train Isolation Forest on normal (clean) swarm behavior
+3. Compute anomaly scores for test graph nodes
+4. Flag nodes with scores below threshold
 
 ---
 
 ### ML Detection: Results
 
-**Performance** (Enhanced Version):
+**Performance**:
 
 | Attack Type | TPR  | FPR  | F1   | Time |
 | ----------- | ---- | ---- | ---- | ---- |
-| Phantom     | 0.73 | 0.44 | 0.32 | ~60s |
-| Position    | 0.27 | 0.26 | 0.24 | ~60s |
-| Coordinated | 1.00 | 0.63 | 0.39 | ~60s |
+| Phantom     | 0.33 | 0.93 | 0.06 | ~5ms |
+| Position    | 0.67 | 0.96 | 0.13 | ~5ms |
+| Coordinated | 1.00 | 0.87 | 0.19 | ~5ms |
 
-**Improvement over Basic ML**:
+❌ **Unacceptable for production** - Very high FPR (87-96%)
 
-- FPR reduced by 37-91%
-- TPR improved by 15-88%
-
-⚠️ **Still research-grade** - FPR too high for production (>25%)
+**Why**: Limited features, high contamination mismatch, overfitting to training data
 
 ---
 
@@ -296,19 +297,21 @@ public_key.verify(message_bytes, signature)
 
 **Performance**:
 
-| Attack Type | TPR  | FPR  | F1   | Time    |
-| ----------- | ---- | ---- | ---- | ------- |
-| Phantom     | 1.00 | 0.00 | 1.00 | 60-80ms |
-| Position    | 1.00 | 0.00 | 1.00 | 60-80ms |
-| Coordinated | 1.00 | 0.00 | 1.00 | 60-80ms |
+| Attack Type | TPR  | FPR  | F1   | Time  |
+| ----------- | ---- | ---- | ---- | ----- |
+| Phantom     | 1.00 | 0.00 | 1.00 | ~58ms |
+| Position    | 0.00 | 0.00 | 0.00 | ~58ms |
+| Coordinated | 1.00 | 0.00 | 1.00 | ~58ms |
 
-✅ **Perfect detection!** No false positives, no false negatives
+✅ **Perfect detection for phantom/coordinated attacks!**
+
+⚠️ **Cannot detect position falsification** - Compromised UAVs have valid keys
 
 **Trade-off**:
 
-- 60× slower than spectral (but still real-time)
+- 30× slower than spectral (but still real-time)
 - Requires key distribution infrastructure
-- 101% message overhead (signature doubles size)
+- ~100% message overhead (64-byte signatures)
 
 ---
 
@@ -316,21 +319,23 @@ public_key.verify(message_bytes, signature)
 
 ### Detection Accuracy
 
-| Method       | Avg F1   | TPR Range | FPR Range | Status        |
-| ------------ | -------- | --------- | --------- | ------------- |
-| **Spectral** | **1.00** | 1.00      | 0.00      | ✅ Production |
-| **Crypto**   | **1.00** | 1.00      | 0.00      | ✅ Production |
-| Enhanced ML  | 0.32     | 0.27-1.00 | 0.26-0.63 | ⚠️ Research   |
-| Centrality   | 0.32     | 0.49-1.00 | 0.50-0.56 | ⚠️ Research   |
+| Method       | Avg F1 | TPR Range | FPR Range | Status          |
+| ------------ | ------ | --------- | --------- | --------------- |
+| **Spectral** | 0.67   | 0.00-1.00 | 0.00      | ✅ Best overall |
+| **Crypto**   | 0.67   | 0.00-1.00 | 0.00      | ✅ Best overall |
+| ML           | 0.13   | 0.33-1.00 | 0.87-0.96 | ❌ Not suitable |
+| Centrality   | 0.15   | 0.67-1.00 | 1.00      | ❌ Not suitable |
+
+**Note**: Position falsification is undetectable by all topology-based methods (Spectral, Crypto)
 
 ### Detection Speed
 
 | Method     | Latency | Suitable For        |
 | ---------- | ------- | ------------------- |
-| Spectral   | 1-12ms  | Real-time, embedded |
-| Centrality | 3-325ms | Real-time (small)   |
-| ML         | ~60s    | Offline analysis    |
-| Crypto     | 60-80ms | Real-time           |
+| Spectral   | ~2ms    | Real-time, embedded |
+| Centrality | ~1ms    | Fast but unreliable |
+| ML         | ~5ms    | Fast but unreliable |
+| Crypto     | ~58ms   | Real-time           |
 
 ---
 
@@ -338,21 +343,21 @@ public_key.verify(message_bytes, signature)
 
 ### Performance vs Swarm Size
 
-| UAVs | Init Time | Step Time | Spectral | Crypto |
-| ---- | --------- | --------- | -------- | ------ |
-| 50   | 2.8ms     | 1.6ms     | 1.2ms    | 60ms   |
-| 100  | 9.4ms     | 5.4ms     | 1.8ms    | 65ms   |
-| 150  | 20ms      | 11.5ms    | 2.9ms    | 70ms   |
-| 200  | 21ms      | 21ms      | 12.3ms   | 75ms   |
-| 250  | 33ms      | 31ms      | 10.6ms   | 80ms   |
+| UAVs | Spectral Time | Crypto Time | Crypto Overhead |
+| ---- | ------------- | ----------- | --------------- |
+| 20   | ~2ms          | ~39ms       | 19.5×           |
+| 25   | ~2ms          | ~48ms       | 24×             |
+| 30   | ~2ms          | ~58ms       | 30×             |
 
-✅ **System scales well to 200+ UAVs**
+✅ **System scales acceptably for typical swarm sizes (20-30 UAVs)**
 
 **Complexity**:
 
-- Graph updates: O(n²)
-- Spectral: O(n³) but optimized
-- Crypto: O(n) - linear scaling
+- Graph construction: O(n²)
+- Spectral eigendecomposition: O(n²)
+- Crypto verification: O(n) - linear scaling
+
+**Trade-off**: 30× computational overhead for provable security guarantees
 
 ---
 
@@ -468,67 +473,80 @@ argus --attack coordinated --detectors spectral crypto --mode comparison
 
 ---
 
-### 3. Perfect Detection Achievement
+### 3. Perfect Detection for Specific Attack Types
 
-**Spectral Enhanced Detector**:
+**Spectral Detector**:
 
-- F1=1.00 across all attack types
-- Sub-10ms latency at scale
-- Novel combination: eigenvector residuals + legitimacy scoring
+- F1=1.00 for phantom and coordinated attacks
+- Sub-2ms latency
+- Cannot detect topology-preserving attacks (position falsification)
 
-**Cryptographic Baseline**:
+**Cryptographic Authentication**:
 
-- Establishes theoretical upper bound (perfect)
-- Practical implementation validated
+- F1=1.00 for phantom and coordinated attacks
+- ~58ms latency (acceptable for real-time)
+- Provable security guarantees
+- Cannot detect compromised UAVs reporting false positions
 
-### 4. Research-Grade ML Improvements
+### 4. Identification of Fundamental Limitations
 
-**Enhanced ML Detector**:
+**Position Falsification: Open Problem**:
 
-- 37-91% FPR reduction using ensemble methods
-- 17-feature engineering framework
-- PCA + quantile calibration
+- All tested methods achieve F1=0.0
+- Root cause: Topology-preserving attack
+- Requires alternative approaches (multi-lateration, physics-based validation, Byzantine consensus)
 
-**Demonstrates**: Research methods work, but simulation fidelity is bottleneck
+**Graph Heuristics: Production Limitations**:
+
+- ML: 87-96% FPR (unusable)
+- Centrality: 100% FPR (unusable)
+- Configuration-sensitive, mobility-degraded
 
 ---
 
 ## Challenges and Solutions
 
-### Challenge 1: Low Initial Detection Rates
+### Challenge 1: Position Falsification Detection
 
-**Problem**: Original spectral detector had F1=0.0 for position attacks
+**Problem**: Position falsification is fundamentally undetectable by topology-based methods
 
-**Solution**:
+**Root Cause**: When compromised UAVs report false positions with offset < communication range, the graph structure remains unchanged
 
-- Added eigenvector residual analysis (subspace detection)
-- Implemented legitimacy flag checking
-- **Result**: F1 improved from 0.0 → 1.0
+**Current Status**:
+
+- Spectral: F1=0.0 (topology unchanged)
+- Crypto: F1=0.0 (valid signatures on false data)
+- **Open research problem**
+
+**Future Directions**: Multi-lateration, physics-based validation, Byzantine consensus
 
 ---
 
 ### Challenge 2: High False Positive Rates
 
-**Problem**: ML detector flagged 60%+ of legitimate UAVs
+**Problem**: ML and Centrality detectors flag too many legitimate UAVs
 
-**Solution**:
+**Root Cause**:
 
-- Ensemble voting (3 detectors, require 2+ agreement)
-- Quantile-based threshold calibration
-- Rich 17-feature set instead of basic 4
-- **Result**: FPR reduced from 100% → 26-63%
+- ML: Limited 4-feature representation, contamination parameter mismatch
+- Centrality: Threshold sensitivity, normal dynamics create anomalies
+
+**Current Status**:
+
+- ML: FPR=87-96% (unusable)
+- Centrality: FPR=100% (unusable)
+
+**Lesson Learned**: Graph-based heuristics require careful tuning and still exhibit high FPR
 
 ---
 
-### Challenge 3: Temporal Correlation Crashes
+### Challenge 3: Computational Overhead
 
-**Problem**: Original temporal detector crashed with constant velocity
+**Problem**: Cryptographic verification is 30× slower than spectral
 
-**Solution**:
+**Solution**: 58ms per detection cycle is still acceptable for 1 Hz broadcast rates
 
-- Switch from velocity magnitude to position deltas
-- Add formation detection logic
-- **Result**: No crashes, 17% TPR for coordinated attacks
+**Result**: Real-time performance maintained for swarms up to 30 UAVs
 
 ---
 
@@ -536,24 +554,33 @@ argus --attack coordinated --detectors spectral crypto --mode comparison
 
 ### For Real-World Deployment
 
-**Option 1: Spectral Enhanced (Recommended)**
-
-```python
-detector = SpectralDetector(
-    threshold=2.8,
-    use_eigenvector_residuals=True
-)
-```
-
-✅ F1=1.0, 1-2ms latency, no infrastructure needed
-
-**Option 2: Cryptographic (If Infrastructure Available)**
+**Recommended: Cryptographic Authentication (Mandatory)**
 
 ```python
 detector = CryptoDetector()
 ```
 
-✅ F1=1.0, 60-80ms latency, requires PKI
+✅ Perfect detection for phantom/coordinated attacks (F1=1.0)
+✅ ~58ms latency (acceptable for 1 Hz broadcasts)
+✅ Provable security guarantees
+⚠️ Requires PKI infrastructure
+⚠️ Cannot detect position falsification (open problem)
+
+**Supplementary: Spectral Analysis (Monitoring)**
+
+```python
+detector = SpectralDetector(threshold=2.5)
+```
+
+✅ Fast (~2ms), lightweight monitoring
+✅ Perfect detection for phantom/coordinated (F1=1.0)
+⚠️ Cannot detect position falsification
+❌ Should NOT be sole security mechanism
+
+**Not Recommended: ML or Centrality**
+
+- ML: FPR=87-96% (too many false alarms)
+- Centrality: FPR=100% (unusable)
 
 ---
 
@@ -564,16 +591,17 @@ detector = CryptoDetector()
 │     Ground Control Station           │
 │                                      │
 │  ┌─────────────────────────────┐   │
-│  │  Spectral Detector (Primary) │   │
-│  │  - 2ms detection             │   │
-│  │  - F1=1.0                    │   │
+│  │  Crypto Verifier (PRIMARY)   │   │
+│  │  - 58ms detection            │   │
+│  │  - F1=1.0 (phantom/coord)    │   │
+│  │  - Mandatory for security    │   │
 │  └─────────────────────────────┘   │
 │           │                          │
 │           ▼                          │
 │  ┌─────────────────────────────┐   │
-│  │  Crypto Verifier (Secondary) │   │
-│  │  - 60ms verification         │   │
-│  │  - Perfect accuracy          │   │
+│  │  Spectral Monitor (optional) │   │
+│  │  - 2ms monitoring            │   │
+│  │  - Anomaly alerting          │   │
 │  └─────────────────────────────┘   │
 │           │                          │
 │           ▼                          │
@@ -581,7 +609,7 @@ detector = CryptoDetector()
 └──────────────────────────────────────┘
 ```
 
-**Strategy**: Use spectral for fast screening, crypto for confirmation
+**Strategy**: Cryptographic authentication is MANDATORY for security-critical UAV applications
 
 ---
 
@@ -610,21 +638,22 @@ detector = CryptoDetector()
 
 ### Detection Limitations
 
-1. **ML Methods**:
+1. **Position Falsification: Unsolved Problem**:
 
-   - High FPR (26-63%) limits production use
-   - Requires offline training period
-   - Feature overlap between legitimate and malicious
+   - All tested methods achieve 0% TPR (F1=0.0)
+   - Topology-preserving attacks are fundamentally undetectable
+   - Requires alternative approaches (multi-lateration, Byzantine consensus)
 
-2. **Temporal Methods**:
+2. **Graph Heuristics (ML, Centrality)**:
 
-   - Low TPR (0-17%) due to constant velocities
-   - Needs realistic flight dynamics
+   - Unacceptable FPR (87-100%) for production
+   - Configuration-sensitive and mobility-degraded
+   - Probabilistic detection subject to evasion
 
-3. **Cryptography**:
-   - Requires key distribution infrastructure
-   - Cannot detect compromised legitimate UAVs
-   - Higher latency and overhead
+3. **Cryptographic Authentication**:
+   - Requires PKI infrastructure
+   - Cannot detect compromised UAVs with valid keys signing false data
+   - 30× computational overhead vs spectral (but acceptable)
 
 ---
 
@@ -632,18 +661,16 @@ detector = CryptoDetector()
 
 ### High Priority Enhancements
 
-1. **Realistic Flight Dynamics**:
+1. **Position Verification (Critical)**:
 
-   - Add acceleration/deceleration
-   - Implement waypoint navigation
-   - Model formation flying
-   - Environmental effects (wind, turbulence)
+   - Multi-lateration using signal strength and time-of-arrival
+   - Physics-based validation (impossible velocities/accelerations)
+   - Byzantine consensus protocols (fault-tolerant position verification)
 
-2. **Communication-Level Features**:
-   - Message timing analysis
-   - Protocol compliance checking
-   - Latency/jitter patterns
-   - Signature validation timing
+2. **Mobility-Aware Thresholds**:
+   - Adaptive threshold functions: τ(v_swarm) = τ₀ + k·v̄
+   - Improve heuristic detector robustness in dynamic scenarios
+   - Reduce mobility-induced false positives
 
 ---
 
@@ -651,36 +678,36 @@ detector = CryptoDetector()
 
 3. **Graph Neural Networks (GNN)**:
 
-   - End-to-end learning on graph structure
-   - Better than hand-crafted features
-   - Can learn subtle attack patterns
+   - Replace hand-crafted features with learned representations
+   - Graph Convolutional Networks (GCN) or Graph Attention Networks (GAT)
+   - Potential to reduce FPR below current 87-96%
 
-4. **LSTM/GRU Sequence Modeling**:
+4. **Post-Quantum Cryptography**:
 
-   - Learn temporal behavioral patterns
-   - Detect anomalous state transitions
-   - Predictive modeling
+   - Ed25519 vulnerable to quantum attacks (Shor's algorithm)
+   - Evaluate lattice-based signatures (Dilithium, Falcon)
+   - Future-proof authentication for long-term deployments
 
-5. **Multi-Modal Fusion**:
-   - Combine graph + communication + behavior
-   - Weighted ensemble of all methods
-   - Adaptive threshold learning
+5. **Hardware Acceleration**:
+   - GPU/FPGA implementation for Ed25519 verification
+   - Target: sub-millisecond latency for very large swarms
+   - Enable support for 100+ UAV swarms
 
 ---
 
 ### Real-World Validation
 
-6. **Hardware Testing**:
+6. **Swarm Size Testing**:
 
-   - RTL-SDR receiver for real Remote ID
-   - Raspberry Pi embedded deployment
-   - Field testing with actual UAVs
+   - Validate with 100-1000 UAV swarms
+   - Identify scalability bottlenecks
+   - Optimize for large-scale deployments
 
-7. **Extended Attacks**:
-   - Replay attacks
-   - Jamming and interference
-   - Sophisticated evasion tactics
-   - Compromised legitimate UAVs
+7. **Emerging Threat Modeling**:
+   - GPS spoofing (affects all UAVs simultaneously)
+   - RF jamming (denial-of-service)
+   - AI-powered adaptive attacks (learn thresholds, craft evasions)
+   - Quantum computing threats to Ed25519
 
 ---
 
@@ -773,41 +800,43 @@ detector = CryptoDetector()
 
 ### Technical Insights
 
-1. **Spectral methods are surprisingly effective** for graph anomaly detection
+1. **Cryptographic authentication is non-negotiable** for security-critical systems
 
-   - Simple eigenvalue monitoring works well
-   - Eigenvector residuals add significant value
+   - Only method with provable security guarantees
+   - ~58ms latency is acceptable for real-time operation
+   - Perfect detection (F1=1.0) for phantom and coordinated attacks
 
-2. **Cryptography provides theoretical upper bound**
+2. **Spectral methods effective but insufficient alone**
 
-   - Perfect detection is achievable
-   - 60-80ms is acceptable for real-time
+   - Fast (~2ms) and accurate for topology-altering attacks
+   - Cannot detect topology-preserving attacks
+   - Should supplement, not replace, cryptographic security
 
-3. **ML methods require careful engineering**
-   - Feature quality matters more than complexity
-   - Ensemble methods significantly reduce FPR
-   - Simulation fidelity limits ML effectiveness
+3. **Graph heuristics have fundamental limitations**
+   - High false positive rates (ML: 87-96%, Centrality: 100%)
+   - Configuration-sensitive and mobility-degraded
+   - Unsuitable as primary security mechanisms
 
 ---
 
 ### Research Insights
 
-4. **Graph-theoretic modeling is powerful**
+4. **Graph-theoretic modeling reveals fundamental limitations**
 
    - Natural representation of UAV swarms
-   - Enables multiple detection approaches
-   - Computationally efficient
+   - Topology-based detection fails for topology-preserving attacks
+   - Position falsification remains an open research problem
 
-5. **Trade-offs are fundamental**
+5. **Trade-offs are NOT just speed vs accuracy**
 
-   - Speed vs accuracy
-   - Infrastructure requirements
-   - False positive vs false negative rates
+   - Cryptography: 30× slower but provable security
+   - Heuristics: Fast but unreliable (high FPR)
+   - Infrastructure vs deployment complexity
 
-6. **Perfect detection is possible**
-   - Two methods achieved F1=1.0
-   - Proves problem is solvable
-   - Provides deployment-ready solutions
+6. **Perfect detection has limits**
+   - Achievable for phantom/coordinated attacks (F1=1.0)
+   - Impossible for position falsification with current methods
+   - Cryptographic authentication is mandatory, not optional
 
 ---
 
@@ -825,29 +854,35 @@ detector = CryptoDetector()
 
 ✅ **Novel Contributions**:
 
-- First comprehensive comparison of graph vs crypto methods
-- Perfect detection with spectral + eigenvector residuals
-- Enhanced ML detector with ensemble methods
-- Validated real-time performance at scale
+- First comprehensive comparison of cryptographic vs graph-based detection
+- Demonstrated cryptographic authentication achieves perfect detection (F1=1.0) for phantom/coordinated attacks
+- Identified position falsification as fundamental unsolved problem (F1=0.0 for all methods)
+- Quantified 30× computational overhead trade-off for provable security
+- Established that graph heuristics are unsuitable as primary security mechanisms (FPR=87-100%)
 
 ---
 
 ### Main Findings
 
-1. **Spectral Enhanced Detection**: F1=1.0, 1-2ms latency
+1. **Cryptographic Authentication**: F1=1.0 for phantom/coordinated, ~58ms latency
 
-   - **Recommended for production deployment**
+   - **MANDATORY for production deployment**
+   - Provable security guarantees
+   - Cannot detect position falsification (compromised UAVs)
 
-2. **Cryptographic Verification**: F1=1.0, 60-80ms latency
+2. **Spectral Detection**: F1=1.0 for phantom/coordinated, ~2ms latency
 
-   - **Ideal when key infrastructure available**
+   - **Supplementary monitoring tool only**
+   - Fast and lightweight
+   - Should NOT be sole security mechanism
 
-3. **ML Methods Show Promise**: 37-91% FPR improvement
+3. **Position Falsification: Unsolved Problem**: All methods achieve F1=0.0
 
-   - **Research-grade, needs better simulation**
+   - **Fundamental limitation of topology-based detection**
+   - Requires multi-modal sensor fusion
 
-4. **System Scales Well**: Validated to 250 UAVs
-   - **Ready for real-world swarm sizes**
+4. **Graph Heuristics Unsuitable**: ML (FPR=87-96%), Centrality (FPR=100%)
+   - **Not recommended for production**
 
 ---
 
@@ -855,17 +890,18 @@ detector = CryptoDetector()
 
 **Immediate Applications**:
 
-- UAV air traffic management
-- Drone detection systems
-- Swarm security monitoring
-- Regulatory compliance verification
+- **Mandatory** cryptographic authentication for production UAV systems
+- Spectral monitoring as supplementary anomaly detection
+- Benchmark for evaluating future detection methods
+- Framework for regulatory compliance (FAA Part 89, ASTM F3411)
 
 **Research Impact**:
 
-- Framework for future Remote ID research
-- Benchmark for detection algorithms
-- Foundation for advanced methods (GNN, LSTM)
-- Open-source tool for community
+- Establishes cryptographic authentication as non-negotiable baseline
+- Identifies position falsification as critical open research problem
+- Quantifies fundamental limitations of graph-based heuristics
+- Provides reproducible framework for future UAV security research
+- Open-source reference implementation for standardization efforts
 
 ---
 
@@ -924,14 +960,14 @@ argus --attack phantom --detectors all --mode live
 
 ### Argus: UAV Remote ID Spoofing Defense
 
-**Key Takeaway**: Graph-theoretic and cryptographic methods can achieve perfect detection of Remote ID spoofing attacks in real-time.
+**Key Takeaway**: Only cryptographic authentication provides provable security guarantees for UAV Remote ID. Graph-based heuristics are insufficient as primary defense mechanisms.
 
 **Next Steps**:
 
-- Real-world hardware testing
-- Advanced ML methods (GNN, LSTM)
-- Extended attack scenarios
-- Production deployment
+- Solve position falsification problem (multi-lateration, Byzantine consensus)
+- Real-world hardware testing with actual UAVs
+- Post-quantum cryptography (Dilithium, Falcon)
+- Mobility-aware threshold adaptation for heuristic monitoring
 
 **Open Source**: Available for research and development
 
@@ -941,20 +977,29 @@ argus --attack phantom --detectors all --mode live
 
 ### Detection Performance Summary
 
-| Method      | Phantom |         | Position |         | Coordinated |         |
-| ----------- | ------- | ------- | -------- | ------- | ----------- | ------- |
-|             | F1      | Time    | F1       | Time    | F1          | Time    |
-| Spectral    | 1.00    | 1-2ms   | 1.00     | 1-2ms   | 1.00        | 1-2ms   |
-| Centrality  | 0.32    | 3-10ms  | 0.40     | 3-10ms  | 0.44        | 3-10ms  |
-| Enhanced ML | 0.32    | ~60s    | 0.24     | ~60s    | 0.39        | ~60s    |
-| Crypto      | 1.00    | 60-80ms | 1.00     | 60-80ms | 1.00        | 60-80ms |
+| Method     | Phantom |       | Position |       | Coordinated |       |
+| ---------- | ------- | ----- | -------- | ----- | ----------- | ----- |
+|            | F1      | Time  | F1       | Time  | F1          | Time  |
+| Spectral   | 1.00    | ~2ms  | 0.00     | ~2ms  | 1.00        | ~2ms  |
+| Centrality | 0.11    | ~1ms  | 0.18     | ~1ms  | 0.17        | ~1ms  |
+| ML         | 0.06    | ~5ms  | 0.13     | ~5ms  | 0.19        | ~5ms  |
+| Crypto     | 1.00    | ~58ms | 0.00     | ~58ms | 1.00        | ~58ms |
+
+**Key Finding**: Position falsification (F1=0.00) is undetectable by all topology-based methods
 
 ### Scalability Performance
 
-- **50 UAVs**: 1.2ms spectral, 60ms crypto
-- **100 UAVs**: 1.8ms spectral, 65ms crypto
-- **200 UAVs**: 12.3ms spectral, 75ms crypto
-- **250 UAVs**: 10.6ms spectral, 80ms crypto
+Based on paper's computational overhead analysis:
+
+- **20 UAVs**: ~2ms spectral, ~39ms crypto
+- **25 UAVs**: ~2ms spectral, ~48ms crypto
+- **30 UAVs**: ~2ms spectral, ~58ms crypto
+
+**Complexity**:
+
+- Spectral: O(n²) for eigendecomposition
+- Crypto: O(n) linear scaling with swarm size
+- Crypto overhead: ~30× slower than spectral but acceptable for real-time
 
 ---
 
