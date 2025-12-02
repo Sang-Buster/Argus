@@ -22,7 +22,7 @@
    - Common tasks
 
 3. **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Solutions to common issues
-   - Visualization problems (Wayland, PyQt5)
+   - Visualization problems (Wayland, PySide6/Qt)
    - Import errors
    - Performance issues
    - Test and lint problems

@@ -7,7 +7,7 @@ Real-time animated plot showing UAV positions, connections, and attacks.
 # Set matplotlib backend to Qt5 for interactive plots
 import matplotlib
 
-matplotlib.use("Qt5Agg")
+matplotlib.use("QtAgg")
 
 from typing import Callable, Optional
 

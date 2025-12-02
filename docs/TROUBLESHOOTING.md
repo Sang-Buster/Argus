@@ -40,10 +40,10 @@ Animation was deleted without rendering anything
 
 **Solutions**:
 
-1. Verify PyQt5 is installed:
+1. Verify PySide6 is installed:
 
    ```bash
-   uv pip install PyQt5
+   uv pip install PySide6
    ```
 
 2. Check backend:
@@ -159,7 +159,7 @@ uv pip install pytest pytest-cov
 
 **Check**:
 
-1. PyQt5 installed? `uv pip install PyQt5`
+1. PySide6 installed? `uv pip install PySide6`
 2. DISPLAY set? (on Linux with SSH)
 3. Backend correct? Run `test_qt_backend.py`
 

@@ -31,7 +31,7 @@ dependencies = [
     "networkx>=3.4.2",
     "numpy>=2.2.6",
     "pycryptodome>=3.23.0",
-    "pyqt5>=5.15.11",
+    "pyside6>=6.7.0",
     "scikit-learn>=1.7.2",
 ]
 

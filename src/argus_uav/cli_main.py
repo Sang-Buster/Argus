@@ -12,7 +12,7 @@ from typing import List, Optional
 
 import matplotlib
 
-matplotlib.use("Qt5Agg")
+matplotlib.use("QtAgg")
 
 import matplotlib.pyplot as plt
 import networkx as nx

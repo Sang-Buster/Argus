@@ -327,7 +327,7 @@ pip install -r requirements.txt
 
 ### Window Not Appearing (Live Mode)
 
-- Check if Qt5 is installed: `pip list | grep PyQt5`
+- Check if Qt is installed: `pip list | grep PySide6`
 - Try different backend: `export MPLBACKEND=TkAgg`
 
 ### Slow Performance

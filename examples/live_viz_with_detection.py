@@ -9,7 +9,7 @@ User can select which detection method to visualize.
 # Set matplotlib backend to Qt5
 import matplotlib
 
-matplotlib.use("Qt5Agg")
+matplotlib.use("QtAgg")
 
 import matplotlib.pyplot as plt
 import numpy as np

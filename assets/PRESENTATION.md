@@ -765,7 +765,7 @@ detector = CryptoDetector()
 - **ruff** - Fast Python linter and formatter
 - **uv** - Package manager and virtual environments
 - **pre-commit** - Git hooks for code quality
-- **PyQt5** - GUI backend for live visualization
+- **PySide6** - Qt6 GUI backend for live visualization (cross-platform)
 
 ---
 

@@ -8,7 +8,7 @@ Generates ROC curves, comparison charts, confusion matrices, and time series plo
 import matplotlib
 
 try:
-    matplotlib.use("Qt5Agg")
+    matplotlib.use("QtAgg")
 except ImportError:
     # Fall back to default if Qt5 not available
     pass

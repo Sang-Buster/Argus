@@ -8,7 +8,7 @@ Shows how phantom UAV attacks disrupt consensus and how defenses restore it.
 # Set matplotlib backend to Qt5
 import matplotlib
 
-matplotlib.use("Qt5Agg")
+matplotlib.use("QtAgg")
 
 import matplotlib.pyplot as plt
 import numpy as np

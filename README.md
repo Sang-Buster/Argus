@@ -33,7 +33,7 @@ Argus is a research framework for investigating UAV swarm vulnerabilities to Rem
 - **Consensus Analysis**: Quantify attack impact on swarm coordination
 - **Visualization**:
   - Publication-quality plots (ROC curves, heatmaps, comparisons) - 300 DPI PDF+PNG
-  - **Live real-time animation** with PyQt5 - Watch UAVs move and attacks unfold!
+  - **Live real-time animation** with PySide6 (Qt6) - Watch UAVs move and attacks unfold!
   - Enhanced interactive visualization with detection overlay
 
 ## Installation

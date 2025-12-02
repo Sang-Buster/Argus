@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-Test PyQt5 backend configuration.
+Test PySide6/Qt backend configuration.
 
-Verifies that matplotlib is using Qt5Agg for interactive plots.
+Verifies that matplotlib is using QtAgg for interactive plots.
 """
 
 import matplotlib
 
-matplotlib.use("Qt5Agg")
+matplotlib.use("QtAgg")
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 
 def main():
-    """Test PyQt5 backend."""
+    """Test PySide6/Qt backend."""
     print("\n" + "=" * 70)
     print("🔧 MATPLOTLIB BACKEND TEST")
     print("=" * 70)
@@ -23,11 +23,11 @@ def main():
     current_backend = matplotlib.get_backend()
     print(f"\nCurrent matplotlib backend: {current_backend}")
 
-    if current_backend == "Qt5Agg":
-        print("✅ PyQt5 backend configured correctly!")
+    if current_backend in ["QtAgg", "Qt5Agg"]:
+        print("✅ Qt backend configured correctly!")
     else:
-        print(f"⚠️  Backend is {current_backend}, not Qt5Agg")
-        print("   Try: import matplotlib; matplotlib.use('Qt5Agg')")
+        print(f"⚠️  Backend is {current_backend}, not QtAgg")
+        print("   Try: import matplotlib; matplotlib.use('QtAgg')")
 
     # Test interactive plot
     print("\n📊 Creating test plot...")
@@ -42,18 +42,18 @@ def main():
     ax.plot(x, y, linewidth=2, color="steelblue", label="sin(x)")
     ax.set_xlabel("X", fontsize=12)
     ax.set_ylabel("Y", fontsize=12)
-    ax.set_title("PyQt5 Backend Test - Interactive Plot", fontsize=14)
+    ax.set_title("Qt Backend Test - Interactive Plot", fontsize=14)
     ax.legend()
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
 
     try:
-        plt.show()  # This will open a Qt5 window
+        plt.show()  # This will open a Qt window
         print("\n✅ Interactive plot displayed successfully!")
     except Exception as e:
         print(f"\n❌ Error displaying plot: {e}")
-        print("   Make sure PyQt5 is installed: uv pip install PyQt5")
+        print("   Make sure PySide6 is installed: uv pip install PySide6")
 
     print("\n" + "=" * 70)
     print("✅ Backend test complete!")
@@ -64,15 +64,16 @@ def main():
     print(f"   • Backend: {matplotlib.get_backend()}")
     print(f"   • Interactive: {matplotlib.is_interactive()}")
 
-    # Check PyQt5 availability
+    # Check PySide6 availability
     try:
-        from PyQt5 import QtCore
+        from PySide6 import QtCore
 
-        print(f"   • PyQt5 version: {QtCore.QT_VERSION_STR}")
-        print("   ✅ PyQt5 is properly installed")
+        print(f"   • PySide6 version: {QtCore.__version__}")
+        print(f"   • Qt version: {QtCore.qVersion()}")
+        print("   ✅ PySide6 is properly installed")
     except ImportError as e:
-        print(f"   ❌ PyQt5 not found: {e}")
-        print("   Install with: uv pip install PyQt5")
+        print(f"   ❌ PySide6 not found: {e}")
+        print("   Install with: uv pip install PySide6")
 
     print()
 
