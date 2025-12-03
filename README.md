@@ -18,16 +18,16 @@
 <h2 align="center" id="-table-of-contents">📑 Table of Contents</h2>
 
 <p align="left">
-<li><a href="#-overview">🔭 Overview</a></li>
-<li><a href="#-key-features">✨ Key Features</a></li>
-<li><a href="#-installation">📦 Installation</a></li>
-<li><a href="#-quick-start">🚀 Quick Start</a></li>
-<li><a href="#-testing">🧪 Testing</a></li>
-<li><a href="#-project-structure">📁 Project Structure</a></li>
-<li><a href="#-documentation">📚 Documentation</a></li>
-<li><a href="#-research-background">🔬 Research Background</a></li>
-<li><a href="#-contributing">🤝 Contributing</a></li>
-<li><a href="#-references">📖 References</a></li>
+<a href="#-overview">🔭 Overview</a><br>
+<a href="#-key-features">✨ Key Features</a><br>
+<a href="#-installation">📦 Installation</a><br>
+<a href="#-quick-start">🚀 Quick Start</a><br>
+<a href="#-testing">🧪 Testing</a><br>
+<a href="#-project-structure">📁 Project Structure</a><br>
+<a href="#-documentation">📚 Documentation</a><br>
+<a href="#-research-background">🔬 Research Background</a><br>
+<a href="#-contributing">🤝 Contributing</a><br>
+<a href="#-references">📖 References</a><br>
 </p>
 
 ---
