@@ -15,29 +15,31 @@
 
 ---
 
-## 📑 Table of Contents
+<h2 align="center" id="-table-of-contents">📑 Table of Contents</h2>
 
-- [🔭 Overview](#-overview)
-- [✨ Key Features](#-key-features)
-- [📦 Installation](#-installation)
-- [🚀 Quick Start](#-quick-start)
-- [🧪 Testing](#-testing)
-- [📁 Project Structure](#-project-structure)
-- [📚 Documentation](#-documentation)
-- [🔬 Research Background](#-research-background)
-- [🤝 Contributing](#-contributing)
-- [📖 References](#-references)
+<p align="left">
+<li><a href="#-overview">🔭 Overview</a></li>
+<li><a href="#-key-features">✨ Key Features</a></li>
+<li><a href="#-installation">📦 Installation</a></li>
+<li><a href="#-quick-start">🚀 Quick Start</a></li>
+<li><a href="#-testing">🧪 Testing</a></li>
+<li><a href="#-project-structure">📁 Project Structure</a></li>
+<li><a href="#-documentation">📚 Documentation</a></li>
+<li><a href="#-research-background">🔬 Research Background</a></li>
+<li><a href="#-contributing">🤝 Contributing</a></li>
+<li><a href="#-references">📖 References</a></li>
+</p>
 
 ---
 
-## 🔭 Overview
+<h2 align="center" id="-overview">🔭 Overview</h2>
 
 **Argus** is a research framework for investigating UAV swarm vulnerabilities to Remote ID spoofing attacks. It combines graph-theoretic analysis with cryptographic defenses to detect and prevent:
 
 <table>
   <tr>
     <th>📄 Paper</th>
-    <th>🎬 Presentation</th>
+    <th>👨🏻‍🏫 Presentation</th>
   </tr>
   <tr>
     <td align="center">
@@ -53,7 +55,7 @@
 
 ---
 
-## ✨ Key Features
+<h2 align="center" id="-key-features">✨ Key Features</h2>
 
 ### 🎮 Simulation & Attacks
 
@@ -86,7 +88,7 @@
 
 ---
 
-## 📦 Installation
+<h2 align="center" id="-installation">📦 Installation</h2>
 
 ### Prerequisites
 
@@ -120,7 +122,7 @@ pytest tests/ -v
 
 ---
 
-## 🚀 Quick Start
+<h2 align="center" id="-quick-start">🚀 Quick Start</h2>
 
 ### 🎛️ Interactive CLI (Recommended)
 
@@ -220,7 +222,7 @@ argus --attack phantom --detectors all --mode comparison \
 
 ---
 
-## 🧪 Testing
+<h2 align="center" id="-testing">🧪 Testing</h2>
 
 ```bash
 # Run all tests
@@ -237,7 +239,7 @@ pytest tests/performance/    # Performance benchmarks
 
 ---
 
-## 📁 Project Structure
+<h2 align="center" id="-project-structure">📁 Project Structure</h2>
 
 ```
 src/argus_uav/
@@ -264,7 +266,7 @@ results/               # Experiment outputs (gitignored)
 
 ---
 
-## 📚 Documentation
+<h2 align="center" id="-documentation">📚 Documentation</h2>
 
 **📖 [Complete Documentation Index](docs/README.md)**
 
@@ -280,7 +282,7 @@ results/               # Experiment outputs (gitignored)
 
 ---
 
-## 🔬 Research Background
+<h2 align="center" id="-research-background">🔬 Research Background</h2>
 
 This project investigates defenses against Remote ID spoofing, a critical security challenge for UAV swarms. Remote ID is mandated by aviation authorities (FAA 14 CFR Part 89) but lacks authentication, making it vulnerable to falsified messages.
 
@@ -303,7 +305,7 @@ This project investigates defenses against Remote ID spoofing, a critical securi
 
 ---
 
-## 🤝 Contributing
+<h2 align="center" id="-contributing">🤝 Contributing</h2>
 
 This is a research project. Contributions are welcome!
 
@@ -316,7 +318,7 @@ This is a research project. Contributions are welcome!
 
 ---
 
-## 📖 References
+<h2 align="center" id="-references">📖 References</h2>
 
 1. Peel, L., et al. (2015). _"Detecting Change Points in Evolving Networks"_
 2. Olfati-Saber, R., & Murray, R. M. (2004). _"Consensus Problems in Networks"_
