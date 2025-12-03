@@ -302,4 +302,4 @@ FutureWarning: adjacency_matrix will return...
 
 ---
 
-**Last Updated**: October 21, 2025
+**Last Updated**: December 2025

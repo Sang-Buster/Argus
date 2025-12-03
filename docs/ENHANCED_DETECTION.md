@@ -1,5 +1,7 @@
 # 🚀 Enhanced Detection Implementation
 
+> ⚠️ **Note**: This document describes earlier experimental enhancements. For the final research results, see [STATUS.md](STATUS.md) and [algorithm_details.md](algorithm_details.md) which reflect the published paper findings. Key conclusion: **Cryptographic authentication is the only recommended method** for production UAV systems.
+
 ## Overview
 
 This document describes the three key improvements made to the Argus UAV detection system based on performance analysis of the three attack types (Phantom, Position Falsification, and Coordinated).

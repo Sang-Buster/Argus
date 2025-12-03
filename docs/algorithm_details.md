@@ -1,6 +1,72 @@
 # Algorithm Details
 
-**Purpose**: Detailed explanations of detection algorithms and cryptographic methods used in Argus.
+**Purpose**: Detailed explanations of detection algorithms and cryptographic methods used in Argus, including experimental findings from our research paper.
+
+---
+
+## Cryptographic Defense (Recommended)
+
+### Ed25519 Digital Signatures
+
+**Algorithm**: EdDSA (Edwards-curve Digital Signature Algorithm) on Curve25519
+
+**Why Ed25519**:
+
+- **Fast**: ~0.05ms signing, ~0.1ms verification per message
+- **Secure**: 128-bit security level (requires O(2¹²⁸) operations to break)
+- **Deterministic**: No random nonce needed (immune to nonce reuse attacks)
+- **Small**: 32-byte keys, 64-byte signatures
+- **Side-channel resistant**: Constant-time operations
+
+**Security Guarantee**:
+
+Based on the computational hardness of the discrete logarithm problem on Curve25519:
+
+> **Theorem (Informal)**: Given a public key pk = [sk]G where G is the generator point and sk is the private key, computing sk from pk requires expected time O(2¹²⁸) using best-known algorithms (Pollard's rho).
+
+**Consequence**: Phantom UAVs cannot forge valid signatures without the private key, enabling **perfect detection** with:
+
+- TPR = 100% (all phantom/coordinated attacks detected)
+- FPR = 0% (no false alarms)
+
+### Detection Algorithm
+
+```python
+Algorithm: Cryptographic Detection
+Input: Graph G(t), Public Key Database PKI
+Output: Set of anomalous UAV IDs
+
+Anomalous ← ∅
+for each node v in V(G):
+    msg ← latest_message(v)
+    if msg.signature is NULL:
+        Anomalous ← Anomalous ∪ {v}  # No signature
+    elif v not in PKI:
+        Anomalous ← Anomalous ∪ {v}  # Unknown UAV
+    elif not Verify_Ed25519(msg, PKI[v]):
+        Anomalous ← Anomalous ∪ {v}  # Invalid signature
+return Anomalous
+```
+
+### Experimental Results
+
+| Attack Type | TPR   | FPR   | F1    | Detection Time |
+| ----------- | ----- | ----- | ----- | -------------- |
+| Phantom     | 1.000 | 0.000 | 1.000 | 57.90ms        |
+| Position    | 0.000 | 0.000 | 0.000 | 57.27ms        |
+| Coordinated | 1.000 | 0.000 | 1.000 | 57.21ms        |
+
+**Mobility Invariance**: Cryptographic detection maintains **zero FPR** regardless of UAV movement patterns (tested at 10 m/s).
+
+### Limitations
+
+- **Cannot detect position falsification**: Compromised UAVs with valid keys can sign false position data
+- **Requires PKI infrastructure**: Public key distribution adds deployment complexity
+- **30× computational overhead**: ~58ms vs ~2ms for spectral (still real-time)
+
+**Reference**: Bernstein, D. J., et al. (2012). "High-speed high-security signatures"
+
+---
 
 ## Graph-Theoretic Detection
 
@@ -9,38 +75,91 @@
 **Based on**: Laplacian eigenvalue monitoring
 
 **Theory**:
-The graph Laplacian is defined as `L = D - A`, where:
+
+The graph Laplacian is defined as:
+
+```
+L = D - A
+```
+
+Where:
 
 - `D` is the degree matrix (diagonal with node degrees)
 - `A` is the adjacency matrix
 
-Eigenvalues of the Laplacian (`λ₁ ≤ λ₂ ≤ ... ≤ λₙ`) reveal structural properties:
+Eigenvalues of the Laplacian (λ₁ ≤ λ₂ ≤ ... ≤ λₙ) reveal structural properties:
 
-- `λ₁ = 0` always (for connected graphs)
-- `λ₂` = **algebraic connectivity** (measures graph robustness)
-- Higher eigenvalues relate to clustering and community structure
+- λ₁ = 0 always (for connected graphs)
+- λ₂ = **algebraic connectivity** (Fiedler value) - measures graph robustness
+- Spectral gap (λₙ - λ₂) characterizes robustness against perturbations
 
-**Detection Method**:
+### Detection Algorithm
 
-1. Train on clean baseline: compute mean and std of eigenvalues
-2. For test graph: compute current eigenvalues
-3. Flag anomalies when eigenvalue distribution deviates significantly
-4. Use Z-score threshold (typically 2-3 standard deviations)
+```python
+Algorithm: Spectral Detection
+Input: Graph G(t), Baseline statistics (μ_λ, σ_λ)
+Output: Set of anomalous UAV IDs
 
-**Why It Works**:
+Compute Laplacian L = D - A
+Compute eigenvalues λ₁ ≤ λ₂ ≤ ... ≤ λₙ
+Compute eigenvectors u₁, u₂, ..., uₙ
 
-- Phantom UAVs alter graph topology
-- New nodes change eigenvalue distribution
-- Sudden changes indicate anomalies
+# Algebraic connectivity check
+z_AC ← |λ₂ - μ_λ₂| / σ_λ₂
 
-**Limitations**:
+# Per-node anomaly scoring
+for each node v in V:
+    score_degree ← z-score of degree(v)
+    score_eigenvector ← residual in subspace projection
+    score_position ← topology-position consistency
 
-- Requires statistical baseline
-- May miss subtle attacks
-- Sensitive to natural network variations
+    combined_score ← 0.25×score_degree + 0.25×z_AC
+                   + 0.20×score_eigenvector + 0.30×score_position
 
-**Reference**:
-Peel, L., et al. (2015). "Detecting Change Points in the Large-scale Structure of Evolving Networks"
+    if combined_score > threshold:
+        flag v as anomalous
+```
+
+### Experimental Results
+
+**Stationary Swarms**:
+
+| Attack Type | TPR   | FPR   | F1    | Detection Time |
+| ----------- | ----- | ----- | ----- | -------------- |
+| Phantom     | 1.000 | 0.000 | 1.000 | 1.97ms         |
+| Position    | 0.000 | 0.000 | 0.000 | 1.75ms         |
+| Coordinated | 1.000 | 0.000 | 1.000 | 1.90ms         |
+
+**Mobile Swarms (10 m/s)**:
+
+| Attack Type | TPR   | FPR       | FPR Change |
+| ----------- | ----- | --------- | ---------- |
+| Phantom     | 99.2% | **62.5%** | +62.5%     |
+| Position    | 1.9%  | 3.2%      | +3.2%      |
+| Coordinated | 99.0% | **6.7%**  | +6.7%      |
+
+### Critical Finding: Mobility Degradation
+
+> **Spectral detection degrades significantly under mobility**. Movement-induced topology changes create false anomaly signals that spectral methods cannot distinguish from genuine attacks.
+
+### Threshold Sensitivity
+
+The spectral detector exhibits **extreme threshold sensitivity**:
+
+| Threshold (τ) | TPR   | FPR   | F1    |
+| ------------- | ----- | ----- | ----- |
+| 2.0           | 1.000 | 0.267 | 0.600 |
+| 2.5 (optimal) | 1.000 | 0.000 | 1.000 |
+| 3.0           | 0.667 | 0.000 | 0.800 |
+| 4.0           | 0.000 | 0.000 | 0.000 |
+
+Threshold must be tuned for:
+
+- Spatial domain size (affects graph density)
+- Communication range (affects degree distribution)
+- Swarm size (affects eigenvalue magnitudes)
+
+**Reference**: Peel, L., et al. (2015). "Detecting Change Points in the Large-scale Structure of Evolving Networks"
 
 ---
 
@@ -49,256 +168,152 @@ Peel, L., et al. (2015). "Detecting Change Points in the Large-scale Structure o
 **Metrics Used**:
 
 1. **Degree Centrality**: `C_D(v) = deg(v) / (n-1)`
-
-   - Number of connections normalized by max possible
-   - High degree = hub node (may be suspicious)
-
 2. **Betweenness Centrality**: `C_B(v) = Σ(σ_st(v) / σ_st)`
+3. **Closeness Centrality**: `C_C(v) = (n-1) / Σd(v,u)`
 
-   - Fraction of shortest paths passing through node
-   - High betweenness = bridge node
+### Experimental Results
 
-3. **Closeness Centrality**: `C_C(v) = 1 / Σd(v, u)`
-   - Inverse of average distance to all other nodes
-   - High closeness = central position
+| Attack Type | TPR   | FPR       | F1    | Detection Time |
+| ----------- | ----- | --------- | ----- | -------------- |
+| Phantom     | 0.667 | **1.000** | 0.114 | 1.24ms         |
+| Position    | 1.000 | **1.000** | 0.182 | 1.12ms         |
+| Coordinated | 1.000 | **1.000** | 0.167 | 1.51ms         |
 
-**Detection Method**:
+### ⚠️ Not Recommended
 
-1. Train on baseline: compute mean and std for each centrality metric
-2. For each node in test graph:
-   - Compute all three centrality values
-   - Calculate Z-scores vs baseline
-   - Combine into weighted anomaly score: `0.4×degree_z + 0.4×betweenness_z + 0.2×closeness_z`
-3. Flag nodes with combined score > threshold
+> **Centrality detection exhibits 100% false positive rate** across all attack types. This renders it **impractical for production deployment**.
 
-**Why It Works**:
+The high FPR occurs because:
 
-- Phantom UAVs often have unusual connectivity patterns
-- Randomly placed phantoms may be isolated or over-connected
-- Position spoofing creates inconsistent centrality
-
-**Limitations**:
-
-- Normal network dynamics create false positives
-- Coordinated attacks can mimic legitimate patterns
-- Requires connected graph for closeness
-
-**Reference**:
-Freeman, L. C. (1978). "Centrality in social networks: Conceptual clarification"
+- Normal network dynamics create centrality variations
+- Threshold tuning cannot eliminate false positives without sacrificing TPR
+- Centrality metrics are too sensitive to natural topology changes
 
 ---
 
-## Cryptographic Defense
-
-### Ed25519 Digital Signatures
-
-**Algorithm**: EdDSA (Edwards-curve Digital Signature Algorithm) on Curve25519
-
-**Why Ed25519**:
-
-- **Fast**: ~50μs signing, ~100μs verification
-- **Secure**: 256-bit security (equivalent to RSA-3072)
-- **Deterministic**: No random nonce needed (immune to nonce reuse attacks)
-- **Small**: 32-byte keys, 64-byte signatures
-- **Side-channel resistant**: Constant-time operations
-
-**Signing Process**:
-
-1. Generate key pair: `(sk, pk)` where `sk` is 32-byte private key, `pk` is public key
-2. To sign message `m`:
-   - Compute `r = H(hash_prefix || m)` where `hash_prefix` is derived from `sk`
-   - Compute `R = r × G` (point on curve)
-   - Compute `h = H(R || pk || m)`
-   - Compute `s = (r + h × sk) mod L`
-   - Signature is `(R, s)` encoded as 64 bytes
-
-**Verification Process**:
-
-1. Parse signature into `(R, s)`
-2. Compute `h = H(R || pk || m)`
-3. Check if `s × G = R + h × pk`
-4. Accept if equation holds, reject otherwise
-
-**In Argus**:
-
-- Each legitimate UAV has an Ed25519 key pair
-- UAVs sign every Remote ID message with their private key
-- Receivers verify signatures using known public keys
-- Phantom UAVs cannot produce valid signatures
-
-**Security Properties**:
-
-- **Unforgeability**: Computationally infeasible to forge signatures without private key
-- **Perfect detection**: 100% TPR (all spoofed messages rejected), 0% FPR (all legitimate accepted)
-- **Non-repudiation**: Signatures prove message origin
-
-**Trade-offs**:
-
-- ✅ Advantages: Perfect accuracy, provable security
-- ⚠️ Disadvantages:
-  - Requires key distribution infrastructure
-  - 101% message overhead (signature doubles message size)
-  - ~60× slower than graph methods (still < 100ms)
-
-**Reference**:
-Bernstein, D. J., et al. (2012). "High-speed high-security signatures"
-
----
-
-## Machine Learning Detection (Future Work)
+## Machine Learning Detection
 
 ### Node2Vec Graph Embeddings
 
 **Algorithm**: Random walk-based graph embedding
-
-**Intuition**:
-
-- Represent each node as a vector in continuous space
-- Similar nodes (by network position) have similar vectors
-- Anomalous nodes cluster separately in embedding space
 
 **Process**:
 
 1. Generate random walks starting from each node
 2. Treat walks as "sentences" and nodes as "words"
 3. Train Word2Vec to learn embeddings
-4. Use embeddings as features for anomaly detection
+4. Use embeddings as features for Isolation Forest
 
-**Parameters**:
+**Feature Vector**:
 
-- `dimensions`: Embedding size (typically 64-128)
-- `walk_length`: Length of each random walk (20-80)
-- `num_walks`: Walks per node (10-200)
-- `p`, `q`: Return/explore parameters (control walk strategy)
-
-**Reference**:
-Grover, A., & Leskovec, J. (2016). "node2vec: Scalable Feature Learning for Networks"
+```
+f(v) = [C_D(v), C_B(v), C_clustering(v), C_C(v)]
+```
 
 ### Isolation Forest
 
-**Algorithm**: Ensemble method for anomaly detection
-
-**Intuition**:
-
-- Anomalies are "few and different"
-- Anomalous points are easier to isolate in decision trees
-- Average isolation depth indicates anomaly score
-
-**Process**:
-
-1. Build ensemble of random trees
-2. For each tree, recursively partition data
-3. Anomalies require fewer splits to isolate
-4. Compute anomaly score from average path length
-5. Threshold to classify anomalous vs normal
+**Intuition**: Anomalies are "few and different" - easier to isolate in decision trees.
 
 **Parameters**:
 
-- `n_estimators`: Number of trees (100-200)
-- `contamination`: Expected fraction of anomalies (0.05-0.2)
-- `max_samples`: Samples per tree ('auto' = 256)
+- `n_estimators`: 100-200 trees
+- `contamination`: 0.15 (expects 15% anomalies)
 
-**Reference**:
-Liu, F. T., et al. (2008). "Isolation Forest"
+### Experimental Results
+
+| Attack Type | TPR   | FPR       | F1    | Detection Time |
+| ----------- | ----- | --------- | ----- | -------------- |
+| Phantom     | 0.333 | **0.933** | 0.062 | 4.88ms         |
+| Position    | 0.667 | **0.963** | 0.129 | 4.63ms         |
+| Coordinated | 1.000 | **0.867** | 0.188 | 5.11ms         |
+
+### ⚠️ Not Recommended
+
+> **ML detection exhibits 87-97% false positive rate** - unsuitable for production deployment.
+
+**Root Cause Analysis**:
+
+1. **Contamination mismatch**: Initial parameter expected 5% anomalies while actual attack density reached ~9%
+2. **Limited features**: 4D feature vector captures insufficient topological information
+3. **Overfitting**: Trained on only 30 baseline graphs
+
+**Future Work**: Consider Graph Neural Networks (GNN) for richer feature learning.
+
+**References**:
+
+- Grover, A., & Leskovec, J. (2016). "node2vec: Scalable Feature Learning for Networks"
+- Liu, F. T., et al. (2008). "Isolation Forest"
+
+---
+
+## Position Falsification: An Open Problem
+
+### Why All Methods Fail
+
+Position falsification is **fundamentally undetectable** by graph-based methods when the falsified position preserves communication topology:
+
+```
+If ∥δ∥ < r_comm:
+    G(p') = G(p)  →  L(p') = L(p)
+```
+
+Since spectral eigenvalues depend only on graph structure (not node positions), position falsification is **topologically invisible**.
+
+### Cryptographic Limitation
+
+Valid signatures only prove:
+
+- **Message authenticity** (sender identity)
+- **Data integrity** (message not tampered)
+
+They do NOT prove **data truthfulness**. A compromised UAV can sign false position data with its legitimate private key.
+
+### Mitigation Strategies (Future Work)
+
+1. **Multi-lateration**: Verify reported positions against distance measurements from neighboring UAVs
+2. **Physics-based validation**: Detect impossible velocities or accelerations
+3. **Byzantine consensus**: Require agreement from ⌊n/3⌋ + 1 UAVs before accepting position claims
 
 ---
 
 ## Attack Models
 
-### Phantom UAV Injection
-
-**Implementation**:
+### Phantom UAV Injection (A₁)
 
 ```python
-for i in range(phantom_count):
-    phantom_id = f"PHANTOM-{i}"
-    position = random_position_in_bounds()
-    velocity = random_velocity()
-
-    phantom = UAV(
-        uav_id=phantom_id,
-        position=position,
-        velocity=velocity,
-        is_legitimate=False,  # Ground truth label
-        private_key=None      # No crypto key!
-    )
-
-    swarm.add_uav(phantom)
+# At time t_attack:
+V(t_attack) ← V(t_attack) ∪ {phantom_1, ..., phantom_k}
+# Phantom UAVs lack valid cryptographic credentials
 ```
 
-**Detection Challenges**:
+**Parameters**: k = 3 phantom UAVs, randomly positioned within communication range
 
-- Phantoms may land in realistic positions
-- Movement patterns can mimic legitimate UAVs
-- Graph topology changes are subtle with few phantoms
-
----
-
-### Position Falsification
-
-**Implementation**:
+### Position Falsification (A₂)
 
 ```python
-for target_uav in selected_targets:
-    offset = random_offset(magnitude)
-
-    # UAV keeps true position for movement
-    true_pos = target_uav.position
-
-    # But reports false position in Remote ID
-    reported_pos = true_pos + offset
-
-    # Receiver sees falsified coordinates
-    message.latitude = reported_pos[1]
-    message.longitude = reported_pos[0]
+# For compromised UAV i:
+p'_i(t) = p_i(t) + δ_i
+# Where ∥δ_i∥ ≤ M_max (100m in experiments)
 ```
 
-**Detection Challenges**:
+**Parameters**: m = 4 compromised UAVs (~13% of swarm)
 
-- Graph topology remains unchanged (true position used)
-- Only detectable via:
-  - Velocity inconsistencies (position jumps)
-  - Comparison with other sensors (radar, visual)
-  - Cryptographic verification (if enabled)
-
----
-
-### Coordinated Attack
-
-**Implementation**:
+### Coordinated Attack (A₃)
 
 ```python
-formation_center = random_position()
-formation_velocity = shared_velocity_vector()
-
+# Circular formation:
 for i in range(phantom_count):
-    # Position relative to formation center
     angle = 2π × i / phantom_count
-    offset = (radius × cos(angle), radius × sin(angle), 0)
-
-    phantom_pos = formation_center + offset
-
-    phantom = UAV(
-        position=phantom_pos,
-        velocity=formation_velocity,  # All move together!
-        is_legitimate=False
-    )
+    position = center + (radius × cos(angle), radius × sin(angle), 0)
 ```
 
-**Why It's Harder to Detect**:
-
-- Phantoms form coherent sub-swarm
-- Movement is coordinated (realistic)
-- May have normal centrality patterns
-- Requires detecting "too perfect" coordination
+**Parameters**: k = 5 phantoms in circular formation (radius = 50m)
 
 ---
 
 ## Consensus Algorithm
 
 ### Average Consensus
-
-**Goal**: All UAVs converge to the average of their initial values
 
 **Update Rule**:
 
@@ -312,58 +327,44 @@ Where:
 - `N_i` = neighbors of UAV i (within comm range)
 - `ε` = step size (typically `1 / max_degree`)
 
-**Convergence**:
-
-- If graph is connected: converges to `x̄ = (1/n)Σx_i(0)`
-- Convergence rate depends on algebraic connectivity (λ₂)
+**Convergence**: If graph is connected, converges to x̄ = (1/n)Σx_i(0)
 
 **Attack Impact**:
 
 - Phantom UAVs inject false values
 - Pulls consensus away from true average
-- More phantoms = larger consensus error
+- Crypto defense rejects phantom values → normal convergence
 
-**Defense Effectiveness**:
-
-- Crypto: Reject phantom values → normal convergence
-- Graph detection: Remove flagged nodes → reduced error
-
-**Reference**:
-Olfati-Saber, R., & Murray, R. M. (2004). "Consensus Problems in Networks of Agents with Switching Topology and Delays"
+**Reference**: Olfati-Saber, R., & Murray, R. M. (2004). "Consensus Problems in Networks of Agents"
 
 ---
 
-## Performance Considerations
+## Computational Complexity
 
-### Computational Complexity
-
-| Operation                | Complexity            | Typical Time (n=50) |
-| ------------------------ | --------------------- | ------------------- |
-| Graph update             | O(n²)                 | ~0.5ms              |
-| Laplacian eigenvalues    | O(n³)                 | ~0.6ms              |
-| Centrality (betweenness) | O(n³)                 | ~1.0ms              |
-| Ed25519 sign             | O(1)                  | ~0.05ms             |
-| Ed25519 verify           | O(1)                  | ~0.1ms              |
-| Node2Vec                 | O(n × walks × length) | ~50-100ms           |
+| Operation                | Complexity            | Time (n=30) |
+| ------------------------ | --------------------- | ----------- |
+| Graph update             | O(n²)                 | ~0.5ms      |
+| Laplacian eigenvalues    | O(n³)                 | ~1.9ms      |
+| Centrality (betweenness) | O(n³)                 | ~1.3ms      |
+| Ed25519 sign             | O(1)                  | ~0.05ms     |
+| Ed25519 verify           | O(1)                  | ~0.1ms      |
+| Node2Vec                 | O(n × walks × length) | ~5ms        |
 
 ### Scalability
 
-**Graph Methods** (O(n²) - O(n³)):
+**Cryptographic** (O(n)): Scales linearly, parallelizable verification
 
-- Works well up to n=100-200 UAVs
-- Beyond that, consider:
-  - Sampling/approximation algorithms
-  - Sparse graph optimizations
-  - Incremental eigenvalue updates
+**Graph Methods** (O(n²) - O(n³)): Works well to n=100-200 UAVs
 
-**Cryptography** (O(n)):
+---
 
-- Scales linearly with swarm size
-- Parallelizable verification
-- Bottleneck: key distribution, not computation
+## Summary: Method Comparison
 
-**Memory**:
+| Method     | Phantom/Coordinated  | Position         | Mobility      | Recommendation  |
+| ---------- | -------------------- | ---------------- | ------------- | --------------- |
+| **Crypto** | ✅ Perfect (F1=1.0)  | ❌ Cannot detect | ✅ Invariant  | **MANDATORY**   |
+| Spectral   | ✅ Good (F1=1.0)     | ❌ Cannot detect | ⚠️ Degrades   | Supplementary   |
+| Centrality | ❌ High FPR (100%)   | ❌ High FPR      | ❌ Unreliable | Not recommended |
+| ML         | ❌ High FPR (87-97%) | ❌ High FPR      | ❌ Unreliable | Not recommended |
 
-- Full graph: O(n²) for adjacency
-- Sparse representation: O(edges) ≈ O(n×avg_degree)
-- For n=100, avg_degree=10: ~1KB per graph snapshot
+**Conclusion**: For security-critical UAV applications, **cryptographic authentication is mandatory**. Graph-based methods may supplement but cannot replace cryptographic security.

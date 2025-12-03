@@ -122,10 +122,8 @@ docs/
 
 **Main README**: [../README.md](../README.md) - Project overview and installation
 
-**Spec Kit Artifacts**: [../specs/001-uav-remote-id-defense/](../specs/001-uav-remote-id-defense/) - Design documents
-
 **Examples**: [../examples/](../examples/) - Runnable demonstrations  
-**CLI Tool**: [../argus_cli.py](../argus_cli.py) - Main command-line interface
+**CLI Tool**: Use `argus` command after installation
 
 **Tests**: [../tests/](../tests/) - Unit and integration tests
 
@@ -162,12 +160,12 @@ If you're using Argus for research:
 If you use this system in your research, please cite:
 
 ```bibtex
-@software{argus2025,
-  author = {Xing, Sang},
-  title = {Argus: A UAV Remote ID Spoofing Defense System},
-  subtitle = {Graph-Theoretic Modeling and Cryptographic Defenses},
+@inproceedings{argus2025,
+  author = {Xing, Sang and Niure Kandel, Laxima},
+  title = {Cryptographic Authentication for UAV Swarm Security: A Comparative Analysis of Detection Methods Against Spoofing Attacks},
   year = {2025},
-  url = {https://github.com/[username]/Argus}
+  institution = {Embry-Riddle Aeronautical University},
+  url = {https://github.com/Sang-Buster/Argus}
 }
 ```
 
@@ -187,6 +185,5 @@ See [references.md](references.md) for a complete list of 19 research papers tha
 
 ---
 
-**Last Updated**: October 21, 2025  
-**Documentation Version**: 1.0.0  
-**Project Status**: Complete (100%)
+**Last Updated**: December 2025  
+**Documentation Version**: 0.2.0

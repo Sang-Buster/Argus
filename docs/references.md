@@ -210,12 +210,13 @@ Research papers and standards cited in Argus development.
 
 If you use Argus in your research, please cite:
 
-```
-@software{argus2025,
-  author = {Xing, Sang},
-  title = {Argus: A UAV Remote ID Spoofing Defense System},
+```bibtex
+@inproceedings{argus2025,
+  author = {Xing, Sang and Niure Kandel, Laxima},
+  title = {Cryptographic Authentication for UAV Swarm Security: A Comparative Analysis of Detection Methods Against Spoofing Attacks},
   year = {2025},
-  url = {https://github.com/[username]/Argus}
+  institution = {Embry-Riddle Aeronautical University},
+  url = {https://github.com/Sang-Buster/Argus}
 }
 ```
 

@@ -66,45 +66,47 @@ argus --attack coordinated --detectors all --mode both
 
 1. **Phantom UAV** (`phantom`)
 
-   - Injects fake/non-existent UAVs into the swarm
+   - Injects 3 fake/non-existent UAVs into the swarm
    - Parameters: number of phantoms, timing
-   - Best detected by: Spectral, Cryptographic
+   - ✅ Detectable by: Crypto (100%), Spectral (100% stationary)
 
 2. **Position Falsification** (`position`)
 
-   - Legitimate UAVs report false GPS coordinates
+   - ~13% of legitimate UAVs report false GPS coordinates (100m offset)
    - Parameters: offset magnitude, timing
-   - Best detected by: Centrality, Cryptographic
+   - ⚠️ **Undetectable by all methods** (topology-preserving attack)
 
 3. **Coordinated Attack** (`coordinated`)
-   - Multiple compromised UAVs working together
-   - Parameters: number of attackers, timing
-   - Best detected by: ML, Cryptographic
+   - 5 phantom UAVs in circular formation
+   - Parameters: number of attackers, formation pattern
+   - ✅ Detectable by: Crypto (100%), Spectral (100% stationary)
 
 ### Detection Methods (4 types)
 
-1. **Spectral Detection** (`spectral`)
+1. **Cryptographic Detection** (`crypto`) ✅ **RECOMMENDED**
+
+   - Ed25519 signature verification
+   - Speed: ~58ms (30× overhead but still real-time)
+   - Accuracy: **Perfect** (TPR=1.0, FPR=0.0) for phantom/coordinated
+   - Mobility: Invariant (no performance degradation)
+
+2. **Spectral Detection** (`spectral`) ⚠️ Supplementary only
 
    - Uses graph Laplacian eigenvalue analysis
-   - Speed: Fast (~1-2ms)
-   - Best for: Phantom UAVs
+   - Speed: Fast (~2ms)
+   - Accuracy: Perfect in stationary, **degrades under mobility** (FPR up to 62.5%)
+   - Use as: Fast alerting, not primary security
 
-2. **Centrality Detection** (`centrality`)
+3. **Centrality Detection** (`centrality`) ❌ Not recommended
 
    - Analyzes degree/betweenness/closeness centrality
    - Speed: Fast (~1-3ms)
-   - Best for: Position falsification
+   - ⚠️ **100% false positive rate** - impractical for production
 
-3. **Cryptographic Detection** (`crypto`)
-
-   - Ed25519 signature verification
-   - Speed: Slower (~50-80ms)
-   - Accuracy: Perfect (TPR=1.0, FPR=0.0)
-
-4. **ML Detection** (`ml`)
-   - Node2Vec embeddings + Random Forest
-   - Speed: Medium (~2-5ms)
-   - Best for: Adaptive to patterns
+4. **ML Detection** (`ml`) ❌ Not recommended
+   - Node2Vec embeddings + Isolation Forest
+   - Speed: Medium (~5ms)
+   - ⚠️ **87-97% false positive rate** - impractical for production
 
 ### Execution Modes
 
@@ -233,29 +235,37 @@ The 4-panel plot includes:
 
 ### Interpreting Results
 
-**Good Performance:**
-
-```
-TPR: 0.80-1.00, FPR: 0.00-0.10, F1: 0.80-1.00
-```
-
-High detection rate, low false alarms
-
-**Poor Performance:**
-
-```
-TPR: <0.50, FPR: >0.30, F1: <0.50
-```
-
-Missing attacks or too many false alarms
-
-**Perfect (Cryptographic):**
+**Perfect (Cryptographic - phantom/coordinated):**
 
 ```
 TPR: 1.00, FPR: 0.00, F1: 1.00
 ```
 
-No false positives or false negatives
+✅ No false positives or false negatives - **use this for production**
+
+**Good (Spectral - stationary only):**
+
+```
+TPR: 1.00, FPR: 0.00, F1: 1.00
+```
+
+⚠️ Works well in stationary swarms but degrades under mobility
+
+**Poor (Centrality, ML):**
+
+```
+TPR: variable, FPR: 0.87-1.00, F1: <0.20
+```
+
+❌ High false positive rates make these impractical for production
+
+**Position Falsification (all methods):**
+
+```
+TPR: 0.00, FPR: 0.00, F1: 0.00
+```
+
+⚠️ Topology-preserving attacks are fundamentally undetectable
 
 ## Visual Legend
 
